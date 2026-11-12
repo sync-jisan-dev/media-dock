@@ -1,0 +1,36 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.jks
+*.keystore
+
+# Node & Backend
+**/node_modules/
+**/dist/
+**/build/
+.pnpm-store/
+.npm/
+**/downloads/
+**/bin/
+*.log
+
+# Android & Gradle
+.gradle/
+build/
+**/build/
+.cxx/
+*.apk
+*.aab
+local.properties
+.idea/
+*.iml
+.DS_Store
+
+# Prisma generated
+src/generated/
+
+# OS Files
+Thumbs.db

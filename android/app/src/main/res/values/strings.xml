@@ -1,0 +1,95 @@
+<resources>
+    <string name="app_name">MediaDock</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_downloads">Downloads</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Home Screen -->
+    <string name="home_hero_title">Universal Media Downloader</string>
+    <string name="home_hero_subtitle">Paste any media URL or share links directly into MediaDock</string>
+    <string name="url_input_hint">Paste media link here (YouTube, Instagram, TikTok, etc.)</string>
+    <string name="action_paste">Paste</string>
+    <string name="action_clear">Clear</string>
+    <string name="action_analyze">Analyze</string>
+    <string name="supported_platforms">Supported Platforms</string>
+    <string name="recent_downloads">Recent Downloads</string>
+    <string name="how_to_share_title">How to download from other apps</string>
+    <string name="how_to_share_desc">Tap the \"Share\" button in YouTube, Instagram, or TikTok, then choose MediaDock.</string>
+
+    <!-- Media Inspection Screen -->
+    <string name="media_inspect_title">Media Details</string>
+    <string name="tab_all">All</string>
+    <string name="tab_video">Video</string>
+    <string name="tab_audio">Audio</string>
+    <string name="tab_images">Images</string>
+    <string name="tab_gif">GIF</string>
+    <string name="quality">Quality</string>
+    <string name="format">Format</string>
+    <string name="duration">Duration</string>
+    <string name="channel_uploader">Uploader</string>
+    <string name="views">Views</string>
+    <string name="action_download">Download</string>
+    <string name="action_download_all">Download All</string>
+    <string name="subtitles_title">Subtitles</string>
+    <string name="thumbnail_title">Thumbnail</string>
+    <string name="gif_creator_title">Create GIF from Video</string>
+    <string name="gif_start_time">Start Time (sec)</string>
+    <string name="gif_end_time">End Time (sec)</string>
+    <string name="gif_generate">Generate GIF</string>
+    <string name="no_images_found">No images detected on this page.</string>
+
+    <!-- Downloads Screen -->
+    <string name="downloads_title">Active Downloads</string>
+    <string name="no_active_downloads">No downloads in progress.</string>
+    <string name="action_pause">Pause</string>
+    <string name="action_resume">Resume</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_retry">Retry</string>
+    <string name="action_open">Open</string>
+    <string name="action_share">Share</string>
+    <string name="action_delete">Delete</string>
+    <string name="status_pending">Pending</string>
+    <string name="status_queued">Queued</string>
+    <string name="status_analyzing">Analyzing</string>
+    <string name="status_processing">Processing</string>
+    <string name="status_downloading">Downloading</string>
+    <string name="status_paused">Paused</string>
+    <string name="status_completed">Completed</string>
+    <string name="status_failed">Failed</string>
+    <string name="status_cancelled">Cancelled</string>
+
+    <!-- History Screen -->
+    <string name="history_title">Download History</string>
+    <string name="history_search_hint">Search downloaded media...</string>
+    <string name="history_empty">No download history found.</string>
+    <string name="action_clear_history">Clear History</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_theme">Theme</string>
+    <string name="theme_system">System Default</string>
+    <string name="theme_light">Light Theme</string>
+    <string name="theme_dark">Dark Theme</string>
+    <string name="settings_download_prefs">Download Preferences</string>
+    <string name="settings_default_quality">Default Video Quality</string>
+    <string name="settings_default_audio_format">Default Audio Format</string>
+    <string name="settings_storage_location">Download Directory</string>
+    <string name="settings_max_concurrent">Max Simultaneous Downloads</string>
+    <string name="settings_wifi_only">Download on Wi-Fi Only</string>
+    <string name="settings_server_url">Backend Server URL</string>
+    <string name="settings_about">About</string>
+    <string name="settings_version">Version</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_terms">Terms of Service</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">Media Downloads</string>
+    <string name="notification_channel_desc">Shows ongoing download progress and notifications</string>
+    <string name="notification_downloading">Downloading media...</string>
+    <string name="notification_completed">Download completed!</string>
+    <string name="notification_failed">Download failed.</string>
+</resources>

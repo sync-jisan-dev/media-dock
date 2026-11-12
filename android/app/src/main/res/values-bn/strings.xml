@@ -1,0 +1,95 @@
+<resources>
+    <string name="app_name">মিডিয়াডক</string>
+
+    <!-- Navigation -->
+    <string name="nav_home">হোম</string>
+    <string name="nav_downloads">ডাউনলোড</string>
+    <string name="nav_history">ইতিহাস</string>
+    <string name="nav_settings">সেটিংস</string>
+
+    <!-- Home Screen -->
+    <string name="home_hero_title">সার্বজনীন মিডিয়া ডাউনলোডার</string>
+    <string name="home_hero_subtitle">যেকোনো মিডিয়ার লিঙ্ক পেস্ট করুন অথবা সরাসরি শেয়ার করুন</string>
+    <string name="url_input_hint">মিডিয়া লিঙ্ক পেস্ট করুন (ইউটিউব, ইনস্টাগ্রাম, টিকটক ইত্যাদি)</string>
+    <string name="action_paste">পেস্ট</string>
+    <string name="action_clear">মুছুন</string>
+    <string name="action_analyze">বিশ্লেষণ</string>
+    <string name="supported_platforms">সমর্থিত প্ল্যাটফর্ম</string>
+    <string name="recent_downloads">সাম্প্রতিক ডাউনলোড</string>
+    <string name="how_to_share_title">অন্যান্য অ্যাপ থেকে কীভাবে ডাউনলোড করবেন</string>
+    <string name="how_to_share_desc">ইউটিউব, ইনস্টাগ্রাম বা টিকটকে \"শেয়ার\" বাটনে চাপুন এবং মিডিয়াডক নির্বাচন করুন।</string>
+
+    <!-- Media Inspection Screen -->
+    <string name="media_inspect_title">মিডিয়ার বিস্তারিত</string>
+    <string name="tab_all">সব</string>
+    <string name="tab_video">ভিডিও</string>
+    <string name="tab_audio">অডিও</string>
+    <string name="tab_images">ছবি</string>
+    <string name="tab_gif">জিআইএফ</string>
+    <string name="quality">কোয়ালিটি</string>
+    <string name="format">ফরম্যাট</string>
+    <string name="duration">স্থিতিকাল</string>
+    <string name="channel_uploader">আপলোডার</string>
+    <string name="views">ভিউ</string>
+    <string name="action_download">ডাউনলোড</string>
+    <string name="action_download_all">সব ডাউনলোড করুন</string>
+    <string name="subtitles_title">সাবটাইটেল</string>
+    <string name="thumbnail_title">থাম্বনেইল</string>
+    <string name="gif_creator_title">ভিডিও থেকে জিআইএফ তৈরি</string>
+    <string name="gif_start_time">শুরুর সময় (সেকেন্ড)</string>
+    <string name="gif_end_time">শেষের সময় (সেকেন্ড)</string>
+    <string name="gif_generate">জিআইএফ তৈরি করুন</string>
+    <string name="no_images_found">এই পাতায় কোনো ছবি পাওয়া যায়নি।</string>
+
+    <!-- Downloads Screen -->
+    <string name="downloads_title">চলমান ডাউনলোড</string>
+    <string name="no_active_downloads">কোনো ডাউনলোড প্রক্রিয়াধীন নেই।</string>
+    <string name="action_pause">বিরতি</string>
+    <string name="action_resume">পুনরায় শুরু</string>
+    <string name="action_cancel">বাতিল</string>
+    <string name="action_retry">পুনরায় চেষ্টা</string>
+    <string name="action_open">খুলুন</string>
+    <string name="action_share">শেয়ার</string>
+    <string name="action_delete">মুছুন</string>
+    <string name="status_pending">অপেক্ষারত</string>
+    <string name="status_queued">সারিবদ্ধ</string>
+    <string name="status_analyzing">বিশ্লেষণ হচ্ছে</string>
+    <string name="status_processing">প্রক্রিয়াকরণ হচ্ছে</string>
+    <string name="status_downloading">ডাউনলোড হচ্ছে</string>
+    <string name="status_paused">স্থগিত</string>
+    <string name="status_completed">সম্পূর্ণ হয়েছে</string>
+    <string name="status_failed">ব্যর্থ হয়েছে</string>
+    <string name="status_cancelled">বাতিল হয়েছে</string>
+
+    <!-- History Screen -->
+    <string name="history_title">ডাউনলোডের ইতিহাস</string>
+    <string name="history_search_hint">ডাউনলোড করা মিডিয়া খুঁজুন...</string>
+    <string name="history_empty">কোনো ডাউনলোডের ইতিহাস পাওয়া যায়নি।</string>
+    <string name="action_clear_history">ইতিহাস মুছুন</string>
+
+    <!-- Settings Screen -->
+    <string name="settings_title">সেটিংস</string>
+    <string name="settings_appearance">চেহারা</string>
+    <string name="settings_theme">থিম</string>
+    <string name="theme_system">সিস্টেম ডিফল্ট</string>
+    <string name="theme_light">হালকা থিম</string>
+    <string name="theme_dark">গাঢ় থিম</string>
+    <string name="settings_download_prefs">ডাউনলোড পছন্দসমূহ</string>
+    <string name="settings_default_quality">ডিফল্ট ভিডিও কোয়ালিটি</string>
+    <string name="settings_default_audio_format">ডিফল্ট অডিও ফরম্যাট</string>
+    <string name="settings_storage_location">ডাউনলোড ফোল্ডার</string>
+    <string name="settings_max_concurrent">একসাথে সর্বোচ্চ ডাউনলোড</string>
+    <string name="settings_wifi_only">কেবলমাত্র ওয়াই-ফাইয়ে ডাউনলোড</string>
+    <string name="settings_server_url">ব্যাকএন্ড সার্ভার ইউআরএল</string>
+    <string name="settings_about">সম্পর্কে</string>
+    <string name="settings_version">সংস্করণ</string>
+    <string name="settings_privacy_policy">গোপনীয়তা নীতি</string>
+    <string name="settings_terms">ব্যবহারের শর্তাবলী</string>
+
+    <!-- Notifications -->
+    <string name="notification_channel_name">মিডিয়া ডাউনলোড</string>
+    <string name="notification_channel_desc">চলমান ডাউনলোডের অগ্রগতি ও নোটিফিকেশন প্রদর্শন করে</string>
+    <string name="notification_downloading">মিডিয়া ডাউনলোড হচ্ছে...</string>
+    <string name="notification_completed">ডাউনলোড সফল হয়েছে!</string>
+    <string name="notification_failed">ডাউনলোড ব্যর্থ হয়েছে।</string>
+</resources>
