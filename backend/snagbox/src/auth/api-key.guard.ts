@@ -55,6 +55,7 @@ export class ApiKeyGuard implements CanActivate {
     if (rawKey) {
       const key = await this.apiKeys.validate(rawKey);
       if (!key) {
+        if (isPublic) return true;
         throw new ApiException(
           ErrorCode.INVALID_API_KEY,
           "Invalid, expired or blocked API key",

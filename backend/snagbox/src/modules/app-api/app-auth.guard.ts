@@ -5,9 +5,11 @@ import { ApiException, ErrorCode } from "../../common/errors";
 import { IS_PUBLIC_KEY } from "../../common/decorators/public.decorator";
 import { ApiKeyService } from "../../auth/api-key.service";
 import { GuestSessionPayload, GuestSessionService } from "./guest-session.service";
+import { NeonAuthService, NeonAuthUser } from "./neon-auth.service";
 
 export interface MobileAppRequest extends Request {
   guestSession?: GuestSessionPayload;
+  neonUser?: NeonAuthUser;
   apiKey?: any;
 }
 
@@ -17,6 +19,7 @@ export class AppAuthGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly guestSessions: GuestSessionService,
     private readonly apiKeys: ApiKeyService,
+    private readonly neonAuth: NeonAuthService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -34,6 +37,7 @@ export class AppAuthGuard implements CanActivate {
     const token = guestTokenHeader || authHeader.replace(/^Bearer\s+/i, "").trim();
 
     if (token) {
+      // Check Guest Session token
       const session = this.guestSessions.validateToken(token);
       if (session) {
         const remaining = this.guestSessions.consumeQuota(session.sessionId, session.quota);
@@ -45,6 +49,13 @@ export class AppAuthGuard implements CanActivate {
           );
         }
         request.guestSession = session;
+        return true;
+      }
+
+      // Check Neon Auth JWT token
+      const neonUser = await this.neonAuth.verifyToken(token);
+      if (neonUser) {
+        request.neonUser = neonUser;
         return true;
       }
 
@@ -68,7 +79,7 @@ export class AppAuthGuard implements CanActivate {
 
     throw new ApiException(
       ErrorCode.INVALID_API_KEY,
-      "Unauthorized: Valid guest session token or API key is required.",
+      "Unauthorized: Valid guest session token, Neon Auth token, or API key is required.",
       HttpStatus.UNAUTHORIZED,
     );
   }

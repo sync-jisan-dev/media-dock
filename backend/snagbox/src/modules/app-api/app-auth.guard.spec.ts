@@ -3,6 +3,7 @@ import { Reflector } from "@nestjs/core";
 import { AppAuthGuard } from "./app-auth.guard";
 import { GuestSessionService } from "./guest-session.service";
 import { ApiKeyService } from "../../auth/api-key.service";
+import { NeonAuthService } from "./neon-auth.service";
 import { ApiException } from "../../common/errors";
 
 describe("AppAuthGuard", () => {
@@ -10,6 +11,7 @@ describe("AppAuthGuard", () => {
   let reflector: Reflector;
   let guestSessions: GuestSessionService;
   let apiKeys: jest.Mocked<ApiKeyService>;
+  let neonAuth: jest.Mocked<NeonAuthService>;
 
   beforeEach(() => {
     reflector = new Reflector();
@@ -22,7 +24,12 @@ describe("AppAuthGuard", () => {
       validate: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<ApiKeyService>;
 
-    guard = new AppAuthGuard(reflector, guestSessions, apiKeys);
+    neonAuth = {
+      verifyToken: jest.fn().mockResolvedValue(null),
+      getAuthConfig: jest.fn(),
+    } as unknown as jest.Mocked<NeonAuthService>;
+
+    guard = new AppAuthGuard(reflector, guestSessions, apiKeys, neonAuth);
   });
 
   const createMockContext = (headers: Record<string, string>): ExecutionContext => {
@@ -50,6 +57,20 @@ describe("AppAuthGuard", () => {
 
     expect(result).toBe(true);
     expect(guestSessions.consumeQuota).toHaveBeenCalledWith("session-123", 50);
+  });
+
+  it("should allow request with valid Neon Auth JWT token", async () => {
+    (guestSessions.validateToken as jest.Mock).mockReturnValue(null);
+    (neonAuth.verifyToken as jest.Mock).mockResolvedValue({
+      id: "usr_neon_123",
+      email: "neonuser@example.com",
+    });
+
+    const context = createMockContext({ authorization: "Bearer neon.jwt.token" });
+    const result = await guard.canActivate(context);
+
+    expect(result).toBe(true);
+    expect(neonAuth.verifyToken).toHaveBeenCalledWith("neon.jwt.token");
   });
 
   it("should throw UNAUTHORIZED when no token is supplied", async () => {

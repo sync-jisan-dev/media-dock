@@ -150,7 +150,7 @@ export const envSchema = z.object({
   YTDLP_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(5).default(2),
   /** Base for the exponential backoff between attempts, in milliseconds. */
   YTDLP_RETRY_BASE_MS: z.coerce.number().int().min(0).max(30_000).default(800),
-});
+}).passthrough();
 
 export type Env = z.infer<typeof envSchema>;
 

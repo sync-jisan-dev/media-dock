@@ -34,3 +34,5 @@ src/generated/
 
 # OS Files
 Thumbs.db
+.neon
+node_modules/

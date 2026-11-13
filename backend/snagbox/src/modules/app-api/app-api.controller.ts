@@ -25,6 +25,10 @@ import { GuestSessionService } from "./guest-session.service";
 import { InspectUrlDto } from "./dto/inspect-url.dto";
 import { CreateAppDownloadDto } from "./dto/create-app-download.dto";
 import { CreateAppBatchDto } from "./dto/create-app-batch.dto";
+import { NeonAuthService } from "./neon-auth.service";
+import { NeonRealtimeService } from "./neon-realtime.service";
+import { NeonAiService } from "./neon-ai.service";
+import { NeonFunctionsService } from "./neon-functions.service";
 
 interface SseMessage {
   data: string;
@@ -39,6 +43,10 @@ export class AppApiController {
     private readonly media: MediaService,
     private readonly downloads: DownloadsService,
     private readonly config: AppConfigService,
+    private readonly neonAuth: NeonAuthService,
+    private readonly neonRealtime: NeonRealtimeService,
+    private readonly neonAi: NeonAiService,
+    private readonly neonFunctions: NeonFunctionsService,
   ) {}
 
   @Post("sessions/guest")
@@ -111,6 +119,67 @@ export class AppApiController {
   @ApiResponse({ status: HttpStatus.OK, description: "Job cancelled successfully" })
   async cancelDownload(@Param("id", ParseUUIDPipe) id: string) {
     return this.downloads.cancel(id);
+  }
+
+  // --- Neon Integration Endpoints ---
+
+  @Get("neon/services")
+  @ApiOperation({ summary: "Check status of all provisioned Neon cloud services" })
+  getNeonServices() {
+    return {
+      status: "operational",
+      branch: process.env.NEON_BRANCH || "production",
+      branchId: process.env.NEON_BRANCH_ID || null,
+      services: {
+        postgres: {
+          configured: Boolean(process.env.DATABASE_URL),
+          host: "ep-summer-scene-be1iseuv.c-9.us-east-2.aws.neon.tech",
+          pooled: Boolean(process.env.DATABASE_URL?.includes("-pooler")),
+        },
+        auth: this.neonAuth.getAuthConfig(),
+        realtime: this.neonRealtime.getRealtimeConfig(),
+        aiGateway: this.neonAi.getAiConfig(),
+        functions: {
+          configured: this.neonFunctions.isConfigured(),
+          helloUrl: this.neonFunctions.isConfigured()
+            ? this.neonFunctions.getFunctionUrl("hello")
+            : null,
+        },
+      },
+    };
+  }
+
+  @Get("auth/config")
+  @ApiOperation({ summary: "Get Neon Auth configuration" })
+  getAuthConfig() {
+    return this.neonAuth.getAuthConfig();
+  }
+
+  @Post("realtime/downloads/live")
+  @UseGuards(AppAuthGuard)
+  @ApiOperation({ summary: "Get sealed live query for Neon Realtime downloads stream" })
+  async getLiveDownloadsQuery() {
+    return this.neonRealtime.sealDownloadsQuery();
+  }
+
+  @Get("ai/models")
+  @UseGuards(AppAuthGuard)
+  @ApiOperation({ summary: "List available models on the Neon AI Gateway" })
+  async getAiModels() {
+    return this.neonAi.listModels();
+  }
+
+  @Post("ai/enhance")
+  @UseGuards(AppAuthGuard)
+  @ApiOperation({ summary: "Enhance media metadata using Neon AI Gateway" })
+  async enhanceMetadata(@Body() body: { title: string; platform?: string }) {
+    return this.neonAi.enhanceMediaMetadata(body.title, body.platform);
+  }
+
+  @Get("functions/hello")
+  @ApiOperation({ summary: "Invoke the deployed Neon serverless Hello function" })
+  async invokeHelloFunction() {
+    return this.neonFunctions.invokeFunction("hello");
   }
 
   @Get("health")
