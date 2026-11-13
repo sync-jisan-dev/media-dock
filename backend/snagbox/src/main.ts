@@ -121,9 +121,9 @@ async function bootstrap(): Promise<void> {
     });
   }
 
-  await app.listen(config.port);
+  await app.listen(config.port, "0.0.0.0");
   Logger.log(
-    `Snagbox API listening on http://localhost:${config.port}` +
+    `Snagbox API listening on http://0.0.0.0:${config.port}` +
       (config.swaggerEnabled ? " (docs at /docs)" : ""),
     "Bootstrap",
   );

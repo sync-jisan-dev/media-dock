@@ -118,7 +118,7 @@ fun MediaInspectScreen(
                     title = "Analysis Failed",
                     message = resource.message,
                     actionLabel = "Try Again",
-                    onActionClick = { }
+                    onActionClick = { viewModel.retry() }
                 )
             }
         }

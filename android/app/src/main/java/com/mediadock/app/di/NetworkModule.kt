@@ -4,6 +4,7 @@ import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFact
 import com.mediadock.app.core.datastore.PreferencesDataStore
 import com.mediadock.app.core.network.ApiConstants
 import com.mediadock.app.core.network.AuthInterceptor
+import com.mediadock.app.core.network.DynamicBaseUrlInterceptor
 import com.mediadock.app.core.network.MediaDockApi
 import dagger.Module
 import dagger.Provides
@@ -33,11 +34,15 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
+    fun provideOkHttpClient(
+        dynamicBaseUrlInterceptor: DynamicBaseUrlInterceptor,
+        authInterceptor: AuthInterceptor
+    ): OkHttpClient {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         }
         return OkHttpClient.Builder()
+            .addInterceptor(dynamicBaseUrlInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(logging)
             .connectTimeout(ApiConstants.TIMEOUT_CONNECT_SECONDS, TimeUnit.SECONDS)

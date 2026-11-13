@@ -80,6 +80,12 @@ class MediaInspectViewModel @Inject constructor(
         }
     }
 
+    fun retry() {
+        if (rawUrl.isNotBlank()) {
+            loadMedia(rawUrl)
+        }
+    }
+
     fun selectTab(tab: InspectTab) {
         _selectedTab.value = tab
     }

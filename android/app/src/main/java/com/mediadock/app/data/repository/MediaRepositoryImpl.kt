@@ -66,7 +66,22 @@ class MediaRepositoryImpl @Inject constructor(
                 Resource.Error(errMsg)
             }
         } catch (e: Exception) {
-            Resource.Error(e.localizedMessage ?: "Network connection failed", e)
+            val friendlyMessage = formatNetworkError(e)
+            Resource.Error(friendlyMessage, e)
+        }
+    }
+
+    private fun formatNetworkError(e: Exception): String {
+        val raw = e.message.orEmpty()
+        return when {
+            raw.contains("10.0.2.2") || raw.contains("failed to connect") || e is java.net.ConnectException ->
+                "Cannot connect to MediaDock backend.\n\n" +
+                "• Ensure your phone and PC are on the same Wi-Fi.\n" +
+                "• Check that the backend server is running.\n" +
+                "• Verify the server IP in Settings (e.g. http://192.168.0.104:3000/)."
+            e is java.net.SocketTimeoutException ->
+                "Connection timed out (30s). The server took too long to respond. Please verify the URL and backend status."
+            else -> e.localizedMessage ?: "Network connection failed"
         }
     }
 
