@@ -1,5 +1,10 @@
 package com.mediadock.app.feature.media
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,10 +47,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,6 +63,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +74,13 @@ import com.mediadock.app.core.common.FormattingUtils
 import com.mediadock.app.core.common.Resource
 import com.mediadock.app.core.designsystem.components.MediaDockEmptyState
 import com.mediadock.app.core.designsystem.components.MediaDockLoadingIndicator
+import com.mediadock.app.core.designsystem.theme.BrightFern
+import com.mediadock.app.core.designsystem.theme.Chartreuse
+import com.mediadock.app.core.designsystem.theme.DarkSpruce
+import com.mediadock.app.core.designsystem.theme.ForestGreen
+import com.mediadock.app.core.designsystem.theme.RadioactiveGrass
+import com.mediadock.app.core.designsystem.theme.SlimeLime
+import com.mediadock.app.core.designsystem.theme.bouncyClickable
 import com.mediadock.app.domain.model.ExtractedImage
 import com.mediadock.app.domain.model.MediaDetails
 
@@ -88,7 +105,6 @@ fun MediaInspectScreen(
             MediaDockLoadingIndicator(message = "Analyzing media link...")
         }
         is Resource.Error -> {
-            // Check if images were found even if video extraction failed (e.g. webpage with images)
             if (imagesResource is Resource.Success && (imagesResource as Resource.Success<List<ExtractedImage>>).data.isNotEmpty()) {
                 val images = (imagesResource as Resource.Success<List<ExtractedImage>>).data
                 ImagesOnlyView(
@@ -112,28 +128,46 @@ fun MediaInspectScreen(
                 // Header Thumbnail & Title
                 MediaHeaderCard(details = details)
 
-                // Navigation Tabs
+                // Navigation Tabs with Spring Indicator
                 TabRow(
                     selectedTabIndex = selectedTab.ordinal,
                     containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
+                    contentColor = SlimeLime,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
+                            color = SlimeLime,
+                            height = 3.dp
+                        )
+                    }
                 ) {
                     InspectTab.entries.forEach { tab ->
                         Tab(
                             selected = selectedTab == tab,
                             onClick = { viewModel.selectTab(tab) },
-                            text = { Text(text = tab.name) }
+                            text = {
+                                Text(
+                                    text = tab.name,
+                                    fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selectedTab == tab) SlimeLime else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         )
                     }
                 }
 
-                // Tab Content
-                when (selectedTab) {
-                    InspectTab.ALL -> AllTabContent(details, viewModel, imagesResource)
-                    InspectTab.VIDEO -> VideoTabContent(details, viewModel)
-                    InspectTab.AUDIO -> AudioTabContent(details, viewModel)
-                    InspectTab.IMAGES -> ImagesTabContent(imagesResource, viewModel)
-                    InspectTab.GIF -> GifTabContent(details, viewModel)
+                // Tab Content with animated slide
+                AnimatedVisibility(
+                    visible = true,
+                    enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)) + slideInVertically { 30 }
+                ) {
+                    when (selectedTab) {
+                        InspectTab.ALL -> AllTabContent(details, viewModel, imagesResource)
+                        InspectTab.VIDEO -> VideoTabContent(details, viewModel)
+                        InspectTab.AUDIO -> AudioTabContent(details, viewModel)
+                        InspectTab.IMAGES -> ImagesTabContent(imagesResource, viewModel)
+                        InspectTab.GIF -> GifTabContent(details, viewModel)
+                    }
                 }
             }
         }
@@ -145,7 +179,7 @@ fun MediaInspectScreen(
 private fun MediaHeaderCard(details: MediaDetails) {
     Card(
         shape = RoundedCornerShape(0.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -158,8 +192,9 @@ private fun MediaHeaderCard(details: MediaDetails) {
                     contentDescription = details.title,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
-                        .size(90.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .size(92.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(1.5.dp, RadioactiveGrass.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                 )
                 Spacer(modifier = Modifier.width(16.dp))
             }
@@ -175,17 +210,24 @@ private fun MediaHeaderCard(details: MediaDetails) {
                     Text(
                         text = details.uploader,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
+                        color = SlimeLime,
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 if (details.durationSeconds != null && details.durationSeconds > 0) {
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Duration: ${FormattingUtils.formatDuration(details.durationSeconds)}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = DarkSpruce
+                    ) {
+                        Text(
+                            text = "⏱ ${FormattingUtils.formatDuration(details.durationSeconds)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Chartreuse,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                 }
             }
         }
@@ -213,10 +255,15 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                     FilterChip(
                         selected = selectedQuality == q,
                         onClick = { viewModel.selectedVideoQuality.value = q },
-                        label = { Text(text = q.uppercase()) },
+                        label = { Text(text = q.uppercase(), fontWeight = FontWeight.Bold) },
                         leadingIcon = if (selectedQuality == q) {
                             { Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
-                        } else null
+                        } else null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = SlimeLime,
+                            selectedLabelColor = DarkSpruce,
+                            selectedLeadingIconColor = DarkSpruce
+                        )
                     )
                 }
             }
@@ -230,7 +277,11 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                     FilterChip(
                         selected = selectedFormat == fmt,
                         onClick = { viewModel.selectedVideoFormat.value = fmt },
-                        label = { Text(text = fmt.uppercase()) }
+                        label = { Text(text = fmt.uppercase(), fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Chartreuse,
+                            selectedLabelColor = DarkSpruce
+                        )
                     )
                 }
             }
@@ -238,7 +289,7 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
 
         item {
             Card(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 Row(
@@ -252,7 +303,14 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                         Text(text = "Embed Subtitles", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                         Text(text = "Include available subtitles inside video", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(checked = embedSubs, onCheckedChange = { viewModel.embedSubtitles.value = it })
+                    Switch(
+                        checked = embedSubs,
+                        onCheckedChange = { viewModel.embedSubtitles.value = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = DarkSpruce,
+                            checkedTrackColor = SlimeLime
+                        )
+                    )
                 }
             }
         }
@@ -263,12 +321,17 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                 onClick = { viewModel.downloadVideo(details) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp)
+                    .height(54.dp)
+                    .bouncyClickable { viewModel.downloadVideo(details) },
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SlimeLime,
+                    contentColor = DarkSpruce
+                )
             ) {
-                Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = DarkSpruce)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Download Video (${selectedQuality.uppercase()})", fontWeight = FontWeight.Bold)
+                Text(text = "Download Video (${selectedQuality.uppercase()})", fontWeight = FontWeight.Black, color = DarkSpruce)
             }
         }
     }
@@ -295,7 +358,11 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                     FilterChip(
                         selected = selectedFormat == fmt,
                         onClick = { viewModel.selectedAudioFormat.value = fmt },
-                        label = { Text(text = fmt.uppercase()) }
+                        label = { Text(text = fmt.uppercase(), fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Chartreuse,
+                            selectedLabelColor = DarkSpruce
+                        )
                     )
                 }
             }
@@ -309,7 +376,11 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                     FilterChip(
                         selected = selectedQuality == q,
                         onClick = { viewModel.selectedAudioQuality.value = q },
-                        label = { Text(text = q.replaceFirstChar { it.uppercase() }) }
+                        label = { Text(text = q.replaceFirstChar { it.uppercase() }) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = SlimeLime,
+                            selectedLabelColor = DarkSpruce
+                        )
                     )
                 }
             }
@@ -317,7 +388,7 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
 
         item {
             Card(
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             ) {
                 Row(
@@ -331,7 +402,14 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                         Text(text = "Embed Cover Art", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                         Text(text = "Embed album thumbnail into audio tags", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(checked = embedArt, onCheckedChange = { viewModel.embedAudioThumbnail.value = it })
+                    Switch(
+                        checked = embedArt,
+                        onCheckedChange = { viewModel.embedAudioThumbnail.value = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = DarkSpruce,
+                            checkedTrackColor = SlimeLime
+                        )
+                    )
                 }
             }
         }
@@ -342,12 +420,17 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                 onClick = { viewModel.downloadAudio(details) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp)
+                    .height(54.dp)
+                    .bouncyClickable { viewModel.downloadAudio(details) },
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SlimeLime,
+                    contentColor = DarkSpruce
+                )
             ) {
-                Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null)
+                Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null, tint = DarkSpruce)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Download Audio (${selectedFormat.uppercase()})", fontWeight = FontWeight.Bold)
+                Text(text = "Download Audio (${selectedFormat.uppercase()})", fontWeight = FontWeight.Black, color = DarkSpruce)
             }
         }
     }
@@ -373,27 +456,37 @@ private fun GifTabContent(details: MediaDetails, viewModel: MediaInspectViewMode
 
         item {
             Card(
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(text = "Start Time: ${startTime}s", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(text = "Start Time: ${startTime}s", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     Slider(
                         value = startTime.toFloat(),
                         onValueChange = { viewModel.gifStartTime.value = it.toLong() },
-                        valueRange = 0f..maxDuration.coerceAtMost(300f)
+                        valueRange = 0f..maxDuration.coerceAtMost(300f),
+                        colors = SliderDefaults.colors(
+                            thumbColor = SlimeLime,
+                            activeTrackColor = SlimeLime,
+                            inactiveTrackColor = ForestGreen
+                        )
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "End Time: ${endTime}s (Duration: ${endTime - startTime}s)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                    Text(text = "End Time: ${endTime}s (Duration: ${endTime - startTime}s)", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     Slider(
                         value = endTime.toFloat(),
                         onValueChange = {
                             val newEnd = it.toLong()
                             if (newEnd > startTime) viewModel.gifEndTime.value = newEnd
                         },
-                        valueRange = 0f..maxDuration.coerceAtMost(300f)
+                        valueRange = 0f..maxDuration.coerceAtMost(300f),
+                        colors = SliderDefaults.colors(
+                            thumbColor = Chartreuse,
+                            activeTrackColor = Chartreuse,
+                            inactiveTrackColor = ForestGreen
+                        )
                     )
                 }
             }
@@ -405,12 +498,17 @@ private fun GifTabContent(details: MediaDetails, viewModel: MediaInspectViewMode
                 onClick = { viewModel.downloadGif(details) },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp)
+                    .height(54.dp)
+                    .bouncyClickable { viewModel.downloadGif(details) },
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = SlimeLime,
+                    contentColor = DarkSpruce
+                )
             ) {
-                Icon(imageVector = Icons.Default.Gif, contentDescription = null, modifier = Modifier.size(24.dp))
+                Icon(imageVector = Icons.Default.Gif, contentDescription = null, modifier = Modifier.size(26.dp), tint = DarkSpruce)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.gif_generate), fontWeight = FontWeight.Bold)
+                Text(text = stringResource(R.string.gif_generate), fontWeight = FontWeight.Black, color = DarkSpruce)
             }
         }
     }
@@ -481,11 +579,11 @@ private fun ImagesGridView(
                 Box(
                     modifier = Modifier
                         .aspectRatio(1f)
-                        .clip(RoundedCornerShape(10.dp))
+                        .clip(RoundedCornerShape(12.dp))
                         .border(
-                            width = if (isSelected) 3.dp else 0.dp,
-                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(10.dp)
+                            width = if (isSelected) 3.dp else 1.dp,
+                            color = if (isSelected) SlimeLime else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                            shape = RoundedCornerShape(12.dp)
                         )
                         .clickable { viewModel.toggleImageSelection(image.id) }
                 ) {
@@ -498,7 +596,7 @@ private fun ImagesGridView(
                     if (isSelected) {
                         Surface(
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = SlimeLime,
                             modifier = Modifier
                                 .padding(6.dp)
                                 .size(24.dp)
@@ -507,7 +605,7 @@ private fun ImagesGridView(
                             Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = DarkSpruce,
                                 modifier = Modifier.padding(4.dp)
                             )
                         }
@@ -518,7 +616,7 @@ private fun ImagesGridView(
 
         if (selectedIds.isNotEmpty()) {
             Surface(
-                tonalElevation = 4.dp,
+                tonalElevation = 6.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Button(
@@ -526,12 +624,17 @@ private fun ImagesGridView(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
-                        .height(50.dp),
-                    shape = RoundedCornerShape(14.dp)
+                        .height(52.dp)
+                        .bouncyClickable { viewModel.downloadSelectedImages(images) },
+                    shape = RoundedCornerShape(16.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SlimeLime,
+                        contentColor = DarkSpruce
+                    )
                 ) {
-                    Icon(imageVector = Icons.Default.Download, contentDescription = null)
+                    Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = DarkSpruce)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Download ${selectedIds.size} Selected Images", fontWeight = FontWeight.Bold)
+                    Text(text = "Download ${selectedIds.size} Selected Images", fontWeight = FontWeight.Black, color = DarkSpruce)
                 }
             }
         }
@@ -580,24 +683,36 @@ private fun AllTabContent(
     ) {
         item {
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { viewModel.selectTab(InspectTab.VIDEO) }
+                    .bouncyClickable { viewModel.selectTab(InspectTab.VIDEO) }
+                    .border(1.dp, RadioactiveGrass.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Movie, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(DarkSpruce),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(imageVector = Icons.Default.Movie, contentDescription = null, tint = SlimeLime, modifier = Modifier.size(24.dp))
+                    }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = "Download Video", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text(text = "Available up to ${details.videoQualities.firstOrNull() ?: "1080p"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Button(onClick = { viewModel.downloadVideo(details) }) {
-                        Text(text = "Get Video")
+                    Button(
+                        onClick = { viewModel.downloadVideo(details) },
+                        colors = ButtonDefaults.buttonColors(containerColor = SlimeLime, contentColor = DarkSpruce)
+                    ) {
+                        Text(text = "Get Video", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -605,24 +720,36 @@ private fun AllTabContent(
 
         item {
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { viewModel.selectTab(InspectTab.AUDIO) }
+                    .bouncyClickable { viewModel.selectTab(InspectTab.AUDIO) }
+                    .border(1.dp, BrightFern.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(DarkSpruce),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null, tint = Chartreuse, modifier = Modifier.size(24.dp))
+                    }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = "Extract Audio", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text(text = "Direct MP3 / M4A extraction with album art", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Button(onClick = { viewModel.downloadAudio(details) }) {
-                        Text(text = "Get Audio")
+                    Button(
+                        onClick = { viewModel.downloadAudio(details) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Chartreuse, contentColor = DarkSpruce)
+                    ) {
+                        Text(text = "Get Audio", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -630,24 +757,36 @@ private fun AllTabContent(
 
         item {
             Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { viewModel.selectTab(InspectTab.GIF) }
+                    .bouncyClickable { viewModel.selectTab(InspectTab.GIF) }
+                    .border(1.dp, ForestGreen.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(DarkSpruce),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = RadioactiveGrass, modifier = Modifier.size(28.dp))
+                    }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = "Create Animated GIF", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                         Text(text = "Convert video clip to GIF", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Button(onClick = { viewModel.selectTab(InspectTab.GIF) }) {
-                        Text(text = "Create GIF")
+                    Button(
+                        onClick = { viewModel.selectTab(InspectTab.GIF) },
+                        colors = ButtonDefaults.buttonColors(containerColor = RadioactiveGrass, contentColor = DarkSpruce)
+                    ) {
+                        Text(text = "Create GIF", fontWeight = FontWeight.Bold)
                     }
                 }
             }

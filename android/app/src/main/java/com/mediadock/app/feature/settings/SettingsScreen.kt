@@ -29,11 +29,14 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -50,6 +53,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.R
 import com.mediadock.app.core.datastore.ThemeMode
+import com.mediadock.app.core.designsystem.theme.Chartreuse
+import com.mediadock.app.core.designsystem.theme.DarkSpruce
+import com.mediadock.app.core.designsystem.theme.ForestGreen
+import com.mediadock.app.core.designsystem.theme.RadioactiveGrass
+import com.mediadock.app.core.designsystem.theme.SlimeLime
+import com.mediadock.app.core.designsystem.theme.bouncyClickable
 
 @Composable
 fun SettingsScreen(
@@ -94,7 +103,7 @@ fun SettingsScreen(
                     viewModel.setServerUrl(tempServerUrl.trim())
                     showServerUrlDialog = false
                 }) {
-                    Text(text = "Save")
+                    Text(text = "Save", color = SlimeLime, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -127,9 +136,9 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(imageVector = Icons.Default.DarkMode, contentDescription = null, tint = SlimeLime)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(text = stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text(text = stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                     }
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
@@ -137,8 +146,9 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ThemeMode.entries.forEach { mode ->
+                            val isSelected = prefs.themeMode == mode
                             FilterChip(
-                                selected = prefs.themeMode == mode,
+                                selected = isSelected,
                                 onClick = { viewModel.setThemeMode(mode) },
                                 label = {
                                     Text(
@@ -146,9 +156,14 @@ fun SettingsScreen(
                                             ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
                                             ThemeMode.LIGHT -> stringResource(R.string.theme_light)
                                             ThemeMode.DARK -> stringResource(R.string.theme_dark)
-                                        }
+                                        },
+                                        fontWeight = FontWeight.Bold
                                     )
-                                }
+                                },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = SlimeLime,
+                                    selectedLabelColor = DarkSpruce
+                                )
                             )
                         }
                     }
@@ -170,17 +185,17 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Storage Directory Picker
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { safLauncher.launch(null) },
+                            .bouncyClickable { safLauncher.launch(null) },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(imageVector = Icons.Default.Folder, contentDescription = null, tint = SlimeLime)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(text = stringResource(R.string.settings_storage_location), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
@@ -193,7 +208,7 @@ fun SettingsScreen(
                         }
                         if (prefs.customDownloadDirectoryUri != null) {
                             TextButton(onClick = { viewModel.setCustomDownloadDir(null) }) {
-                                Text("Reset")
+                                Text("Reset", color = SlimeLime)
                             }
                         }
                     }
@@ -201,7 +216,7 @@ fun SettingsScreen(
                     // Max Concurrent Downloads Slider
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = RadioactiveGrass)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = "${stringResource(R.string.settings_max_concurrent)}: ${prefs.maxConcurrentDownloads}",
@@ -213,7 +228,12 @@ fun SettingsScreen(
                             value = prefs.maxConcurrentDownloads.toFloat(),
                             onValueChange = { viewModel.setMaxConcurrent(it.toInt()) },
                             valueRange = 1f..5f,
-                            steps = 3
+                            steps = 3,
+                            colors = SliderDefaults.colors(
+                                thumbColor = SlimeLime,
+                                activeTrackColor = SlimeLime,
+                                inactiveTrackColor = ForestGreen
+                            )
                         )
                     }
 
@@ -224,13 +244,17 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(imageVector = Icons.Default.Wifi, contentDescription = null, tint = Chartreuse)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(text = stringResource(R.string.settings_wifi_only), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                         }
                         Switch(
                             checked = prefs.wifiOnlyDownloading,
-                            onCheckedChange = { viewModel.setWifiOnly(it) }
+                            onCheckedChange = { viewModel.setWifiOnly(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = DarkSpruce,
+                                checkedTrackColor = SlimeLime
+                            )
                         )
                     }
                 }
@@ -251,7 +275,7 @@ fun SettingsScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
+                    .bouncyClickable {
                         tempServerUrl = prefs.serverUrl
                         showServerUrlDialog = true
                     }
@@ -260,10 +284,10 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Dns, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(imageVector = Icons.Default.Dns, contentDescription = null, tint = SlimeLime)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "API Endpoint", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text(text = "API Endpoint", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                         Text(text = prefs.serverUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -286,9 +310,9 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = SlimeLime)
                         Spacer(modifier = Modifier.width(12.dp))
-                        Text(text = "MediaDock", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Text(text = "MediaDock", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                     }
                     Text(
                         text = "Universal, privacy-first all-in-one Android media downloader. Powered by Snagbox NestJS backend engine with yt-dlp, FFmpeg, and high-performance scoped storage.",
@@ -296,7 +320,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "Version: 1.0.0 (Release Build)", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Text(text = "Version: 1.0.0 (Production Release)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = SlimeLime)
                 }
             }
         }

@@ -33,10 +33,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -56,6 +58,12 @@ import com.mediadock.app.R
 import com.mediadock.app.core.common.FormattingUtils
 import com.mediadock.app.core.database.entity.HistoryEntity
 import com.mediadock.app.core.designsystem.components.MediaDockEmptyState
+import com.mediadock.app.core.designsystem.theme.Chartreuse
+import com.mediadock.app.core.designsystem.theme.DarkSpruce
+import com.mediadock.app.core.designsystem.theme.ForestGreen
+import com.mediadock.app.core.designsystem.theme.RadioactiveGrass
+import com.mediadock.app.core.designsystem.theme.SlimeLime
+import com.mediadock.app.core.designsystem.theme.bouncyClickable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -104,7 +112,7 @@ fun HistoryScreen(
                 onValueChange = viewModel::onSearchChange,
                 modifier = Modifier.fillMaxWidth(),
                 placeholder = { Text(text = stringResource(R.string.history_search_hint)) },
-                leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
+                leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null, tint = SlimeLime) },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { viewModel.onSearchChange("") }) {
@@ -113,7 +121,11 @@ fun HistoryScreen(
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(16.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = SlimeLime,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
+                )
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -126,10 +138,15 @@ fun HistoryScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 listOf("ALL", "video", "audio", "image", "gif").forEach { type ->
+                    val isSelected = selectedFilter == type
                     FilterChip(
-                        selected = selectedFilter == type,
+                        selected = isSelected,
                         onClick = { viewModel.selectFilter(type) },
-                        label = { Text(text = type.uppercase()) }
+                        label = { Text(text = type.uppercase(), fontWeight = FontWeight.Bold) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = SlimeLime,
+                            selectedLabelColor = DarkSpruce
+                        )
                     )
                 }
 
@@ -201,10 +218,12 @@ private fun HistoryItemCard(
     }
 
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier = Modifier.fillMaxWidth()
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bouncyClickable { onOpen() }
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
@@ -218,12 +237,12 @@ private fun HistoryItemCard(
             }
 
             Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
-                modifier = Modifier.size(44.dp)
+                shape = RoundedCornerShape(12.dp),
+                color = DarkSpruce,
+                modifier = Modifier.size(46.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(imageVector = icon, contentDescription = null, tint = SlimeLime)
                 }
             }
 
@@ -245,13 +264,13 @@ private fun HistoryItemCard(
             }
 
             Row {
-                IconButton(onClick = onOpen) {
-                    Icon(imageVector = Icons.Default.FileOpen, contentDescription = "Open", tint = MaterialTheme.colorScheme.primary)
+                IconButton(onClick = onOpen, modifier = Modifier.bouncyClickable(onClick = onOpen)) {
+                    Icon(imageVector = Icons.Default.FileOpen, contentDescription = "Open", tint = SlimeLime)
                 }
-                IconButton(onClick = onShare) {
-                    Icon(imageVector = Icons.Default.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.secondary)
+                IconButton(onClick = onShare, modifier = Modifier.bouncyClickable(onClick = onShare)) {
+                    Icon(imageVector = Icons.Default.Share, contentDescription = "Share", tint = RadioactiveGrass)
                 }
-                IconButton(onClick = onDelete) {
+                IconButton(onClick = onDelete, modifier = Modifier.bouncyClickable(onClick = onDelete)) {
                     Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }

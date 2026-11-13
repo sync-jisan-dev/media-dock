@@ -8,6 +8,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.mediadock.app.core.designsystem.theme.MediaDockMotion
 import com.mediadock.app.feature.downloads.DownloadsScreen
 import com.mediadock.app.feature.downloads.DownloadsViewModel
 import com.mediadock.app.feature.history.HistoryScreen
@@ -29,7 +30,11 @@ fun MediaDockNavHost(
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = { MediaDockMotion.ScreenEnter },
+        exitTransition = { MediaDockMotion.ScreenExit },
+        popEnterTransition = { MediaDockMotion.ScreenPopEnter },
+        popExitTransition = { MediaDockMotion.ScreenPopExit }
     ) {
         composable(Screen.Home.route) {
             val homeViewModel: HomeViewModel = hiltViewModel()

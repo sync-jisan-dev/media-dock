@@ -5,25 +5,49 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:scaleX="0.5"
-        android:scaleY="0.5"
-        android:translateX="27"
-        android:translateY="27">
-        <!-- Downward arrow -->
-        <path
-            android:fillColor="#9EEFFD"
-            android:pathData="M54,16 L54,64 M34,44 L54,64 L74,44"
-            android:strokeWidth="10"
-            android:strokeColor="#9EEFFD"
-            android:strokeLineCap="round"
-            android:strokeLineJoin="round" />
-        <!-- Dock cradle base -->
+        android:scaleX="0.55"
+        android:scaleY="0.55"
+        android:translateX="24.3"
+        android:translateY="24.3">
+
+        <!-- Outer Glowing Media Halo Accent (Bright Fern #38B000) -->
         <path
             android:fillColor="#00000000"
-            android:pathData="M24,70 L24,84 L84,84 L84,70"
-            android:strokeWidth="10"
-            android:strokeColor="#FFFFFF"
+            android:pathData="M22,54 A32,32 0 0,1 86,54"
+            android:strokeWidth="4"
+            android:strokeColor="#38B000"
+            android:strokeLineCap="round" />
+
+        <!-- Dock Base Cradle (Radioactive Grass #70E000) -->
+        <path
+            android:fillColor="#00000000"
+            android:pathData="M24,68 L24,82 A6,6 0 0,0 30,88 L78,88 A6,6 0 0,0 84,82 L84,68"
+            android:strokeWidth="8"
+            android:strokeColor="#70E000"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
+
+        <!-- Dock Internal Center Notch (Slime Lime #9EF01A) -->
+        <path
+            android:fillColor="#9EF01A"
+            android:pathData="M48,88 L60,88 L58,82 L50,82 Z" />
+
+        <!-- Downward Arrow Shaft (Chartreuse #CCFF33) -->
+        <path
+            android:fillColor="#CCFF33"
+            android:pathData="M50,18 L58,18 L58,54 L50,54 Z" />
+
+        <!-- Downward Arrow Head (Slime Lime #9EF01A & Chartreuse #CCFF33) -->
+        <path
+            android:fillColor="#9EF01A"
+            android:pathData="M54,72 L32,46 L44,46 L54,58 L64,46 L76,46 Z"
+            android:strokeWidth="2"
+            android:strokeColor="#CCFF33"
+            android:strokeLineJoin="round" />
+
+        <!-- Media Play Emblem Center Cutout (Dark Spruce #004B23) -->
+        <path
+            android:fillColor="#004B23"
+            android:pathData="M51,46 L58,51 L51,56 Z" />
     </group>
 </vector>
