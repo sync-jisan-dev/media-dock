@@ -1,3 +1,12 @@
+---
+title: MediaDock Backend
+emoji: ⚡
+colorFrom: green
+colorTo: green
+sdk: docker
+app_port: 7860
+---
+
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/brand/logo-dark.svg">

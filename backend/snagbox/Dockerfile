@@ -42,13 +42,22 @@ RUN set -eu; \
   echo "${sum}  /usr/local/bin/yt-dlp" | sha256sum -c -; \
   chmod 755 /usr/local/bin/yt-dlp; \
   yt-dlp --version
-WORKDIR /app
-COPY --from=build /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/prisma.config.ts ./
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/packages ./packages
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/assets ./assets
+# Hugging Face Spaces runs as user with UID 1000
+RUN useradd -m -u 1000 user
+ENV HOME=/home/user
+WORKDIR /home/user/app
+
+COPY --chown=user:user --from=build /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/prisma.config.ts ./
+COPY --chown=user:user --from=build /app/dist ./dist
+COPY --chown=user:user --from=build /app/prisma ./prisma
+COPY --chown=user:user --from=build /app/packages ./packages
+COPY --chown=user:user --from=build /app/node_modules ./node_modules
+COPY --chown=user:user --from=build /app/assets ./assets
+
+RUN mkdir -p /home/user/app/downloads /home/user/app/temp && chown -R user:user /home/user
+
+USER user
+
 LABEL org.opencontainers.image.title="Snagbox" \
       org.opencontainers.image.description="Paste a link, snag the media: a self-hostable downloader API." \
       org.opencontainers.image.url="https://github.com/fabwaseem/snagbox" \
@@ -56,10 +65,10 @@ LABEL org.opencontainers.image.title="Snagbox" \
       org.opencontainers.image.licenses="MIT" \
       org.opencontainers.image.version="2.0.0"
 ENV NODE_ENV=production \
-  PORT=3001 \
+  PORT=7860 \
   YTDLP_PATH=/usr/local/bin/yt-dlp \
   FFMPEG_PATH=/usr/bin/ffmpeg \
   YTDLP_VERSION=2026.08.19
-EXPOSE 3001
+EXPOSE 7860
 # exec replaces the shell so node is PID 1 and receives SIGTERM on rollout.
 CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node dist/main"]
