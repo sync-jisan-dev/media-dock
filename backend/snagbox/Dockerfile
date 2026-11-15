@@ -18,7 +18,8 @@ RUN pnpm --filter @snagbox/shared build \
 
 FROM node:22-bookworm-slim AS runtime
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg python3 \
+  && apt-get install -y --no-install-recommends ca-certificates curl ffmpeg python3 python3-pip \
+  && python3 -m pip install --no-cache-dir --break-system-packages gallery-dl==1.32.20 \
   && rm -rf /var/lib/apt/lists/*
 # Pinned yt-dlp. Node 22 (this image) is the JS runtime for YouTube's n challenge.
 ARG YTDLP_VERSION=2026.08.19
@@ -68,6 +69,7 @@ ENV NODE_ENV=production \
   PORT=7860 \
   YTDLP_PATH=/usr/local/bin/yt-dlp \
   FFMPEG_PATH=/usr/bin/ffmpeg \
+  GALLERY_DL_PATH=/usr/local/bin/gallery-dl \
   YTDLP_VERSION=2026.08.19
 EXPOSE 7860
 # exec replaces the shell so node is PID 1 and receives SIGTERM on rollout.

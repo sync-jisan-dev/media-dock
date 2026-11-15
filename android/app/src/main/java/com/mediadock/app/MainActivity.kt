@@ -74,6 +74,8 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                    contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
                     topBar = {
                         MediaDockTopBar(
                             title = screenTitle,

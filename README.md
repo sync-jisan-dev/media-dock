@@ -13,13 +13,14 @@ MediaDock is an enterprise-grade, universal media downloader for Android. It ena
 
 1. **Video Downloading:** Supports 144p up to 4K Ultra HD (2160p) across MP4, MKV, and WEBM containers with automatic audio merging via FFmpeg.
 2. **Audio Extraction:** High-bitrate audio extraction (MP3 320 kbps, M4A, Opus, WAV, FLAC) with automatic ID3 tag & album artwork embedding.
-3. **Webpage Image Extraction:** Extracts high-resolution images from Open Graph metadata, Twitter Cards, JSON-LD structured data, `<img>` tags, and responsive `srcset` sources with multi-selection and batch download.
-4. **Video-to-GIF Conversion:** Interactive start/end time trimming to transcode video segments into animated GIFs.
-5. **Real-Time Progress:** Live Server-Sent Events (SSE) tracking backend transcoding speed and ETA, coupled with streaming chunk download directly to device storage.
-6. **Native Android Integration:** Deep integration with Android's Share Sheet (`ACTION_SEND`), Scoped Storage (`MediaStore` API), and Storage Access Framework (SAF).
-7. **Zero-Secret Mobile Security:** Zero embedded credentials in the APK; secure, server-signed guest sessions backed by Android Keystore.
-8. **Offline-First Management:** Persistent download history via Room Database with fast search, filtering, and direct file open/share actions.
-9. **Full Localization:** Complete English and Bengali (বাংলা) user interface strings.
+3. **Professional Multi-Engine Extraction:** Uses yt-dlp as the primary quality engine, gallery-dl for specialist galleries and collections, a TikTok embed recovery path, and an optional operator-owned Cobalt instance as a final provider fallback.
+4. **Webpage Image Extraction:** Extracts high-resolution images through gallery-dl first, then falls back to Open Graph metadata, Twitter Cards, JSON-LD, `<img>` tags, and responsive `srcset` sources with multi-selection and batch download.
+5. **Video-to-GIF Conversion:** Interactive start/end time trimming to transcode video segments into animated GIFs.
+6. **Real-Time Progress:** Live Server-Sent Events (SSE) tracking backend transcoding speed and ETA, coupled with streaming chunk download directly to device storage.
+7. **Native Android Integration:** Deep integration with Android's Share Sheet (`ACTION_SEND`), Scoped Storage (`MediaStore` API), and Storage Access Framework (SAF).
+8. **Zero-Secret Mobile Security:** Zero embedded credentials in the APK; secure, server-signed guest sessions backed by Android Keystore.
+9. **Offline-First Management:** Persistent download history via Room Database with fast search, filtering, and direct file open/share actions.
+10. **MediaDock 2.0 Design:** A purpose-built indigo/aqua design system with adaptive light/dark themes, floating navigation, accessible contrast, and focused task hierarchy.
 
 ---
 
@@ -36,14 +37,27 @@ MediaDock is an enterprise-grade, universal media downloader for Android. It ena
             │
       HTTPS / TLS 1.3
             │
-[ Backend Services (Snagbox Engine) ]
+[ Backend Services (Multi-Engine Orchestrator) ]
   ├─ NestJS 11 Gateway (/app/v1)
   ├─ Guest Session Engine (HMAC-SHA256 Token)
-  ├─ Image Scraper & Extractor (SSRF-Guarded Cheerio)
-  ├─ yt-dlp & FFmpeg Transcoding Worker
+  ├─ yt-dlp Primary Quality Engine + FFmpeg Worker
+  ├─ gallery-dl Gallery / Collection Extractor
+  ├─ Cobalt Client (Optional Self-Hosted Fallback)
+  ├─ TikTok Embed + SSRF-Guarded Cheerio Fallbacks
   ├─ Redis 7 (Queue & State Event Bus)
   └─ PostgreSQL 16 (Prisma ORM)
 ```
+
+### Optional Cobalt provider
+
+Cobalt's hosted API is not intended for use by third-party applications. MediaDock therefore never calls `api.cobalt.tools`. To enable the fallback, run your own protected Cobalt instance and configure:
+
+```env
+COBALT_API_URL=https://your-cobalt-instance.example
+COBALT_API_KEY=your-instance-api-key
+```
+
+The production MediaDock image includes gallery-dl as a separate command-line engine. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for its license and upstream source.
 
 ---
 

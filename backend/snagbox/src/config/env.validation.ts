@@ -112,6 +112,12 @@ export const envSchema = z.object({
   DIRECT_DOWNLOAD_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(3_600_000).default(300_000),
   /** Hard cap on bytes read from a provider direct download. Default 2 GiB. */
   DIRECT_DOWNLOAD_MAX_BYTES: z.coerce.number().int().positive().default(2 * 1024 ** 3),
+  /** Optional self-hosted cobalt API. Public cobalt instances must not be used without permission. */
+  COBALT_API_URL: z.string().optional().default(""),
+  /** Api-Key token configured on the self-hosted cobalt instance. */
+  COBALT_API_KEY: z.string().optional().default(""),
+  /** gallery-dl executable used by the image gallery extractor. */
+  GALLERY_DL_PATH: z.string().optional().default("gallery-dl"),
   FFMPEG_PATH: z.string().optional().default(""),
   /** Forwarded to yt-dlp as --proxy (helps with datacenter-IP blocks). */
   YTDLP_PROXY: z.string().optional().default(""),

@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,16 +38,23 @@ fun MediaDockEmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(32.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(24.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            Spacer(modifier = Modifier.height(22.dp))
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
@@ -58,8 +67,12 @@ fun MediaDockEmptyState(
                 textAlign = TextAlign.Center
             )
             if (!actionLabel.isNullOrBlank()) {
-                Spacer(modifier = Modifier.height(20.dp))
-                Button(onClick = onActionClick) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = onActionClick,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.height(48.dp)
+                ) {
                     Text(text = actionLabel)
                 }
             }

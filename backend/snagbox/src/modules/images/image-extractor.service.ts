@@ -1,7 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, Optional } from "@nestjs/common";
 import * as cheerio from "cheerio";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import { assertPublicHttpUrl, safeFetch } from "../../common/http/safe-fetch";
 import { ApiException, ErrorCode } from "../../common/errors";
+import { AppConfigService } from "../../config/app-config.service";
+
+const execFileAsync = promisify(execFile);
 
 export interface ExtractedImageItem {
   id: string;
@@ -11,7 +16,7 @@ export interface ExtractedImageItem {
   width?: number;
   height?: number;
   format?: string;
-  source: "og" | "twitter" | "jsonld" | "img" | "direct";
+  source: "og" | "twitter" | "jsonld" | "img" | "direct" | "gallery";
 }
 
 export interface ImageExtractionResult {
@@ -27,6 +32,8 @@ const TRACKING_KEYWORDS = ["tracking", "pixel", "beacon", "analytics", "spacer",
 @Injectable()
 export class ImageExtractorService {
   private readonly logger = new Logger(ImageExtractorService.name);
+
+  constructor(@Optional() private readonly config?: AppConfigService) {}
 
   private sanitizeUrl(raw: string, baseUrl?: string): string | null {
     try {
@@ -113,6 +120,12 @@ export class ImageExtractorService {
         ],
       };
     }
+
+    // gallery-dl understands gallery APIs, lazy-loaded feeds, collections and
+    // image hosts that a plain HTML parser cannot see. It is the preferred
+    // extractor when installed; unsupported URLs fall through to Cheerio.
+    const gallery = await this.extractWithGalleryDl(rawUrl);
+    if (gallery) return gallery;
 
     // 2. Fetch page HTML with safeFetch
     let response;
@@ -256,5 +269,59 @@ export class ImageExtractorService {
       totalFound: images.length,
       images: images.slice(0, 100), // Cap at 100 images per page
     };
+  }
+
+  private async extractWithGalleryDl(rawUrl: string): Promise<ImageExtractionResult | null> {
+    const binary = this.config?.galleryDlPath || "gallery-dl";
+    try {
+      const { stdout } = await execFileAsync(
+        binary,
+        [
+          "--config-ignore",
+          "--no-input",
+          "--no-colors",
+          "--resolve-urls",
+          "--range",
+          "1-100",
+          "--",
+          rawUrl,
+        ],
+        { timeout: 45_000, maxBuffer: 8 * 1024 * 1024, windowsHide: true },
+      );
+      const seen = new Set<string>();
+      const urls = stdout
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .filter((line) => {
+          const clean = this.sanitizeUrl(line);
+          if (!clean || seen.has(clean)) return false;
+          seen.add(clean);
+          return true;
+        });
+      if (!urls.length) return null;
+
+      const host = new URL(rawUrl).hostname.replace(/^www\./, "");
+      const images = [...seen].slice(0, 100).map((url, index): ExtractedImageItem => ({
+        id: `gallery_${index + 1}`,
+        url,
+        title: `Gallery item ${index + 1}`,
+        format: this.detectFormatFromUrl(url) ?? "jpg",
+        source: "gallery",
+      }));
+      this.logger.log(`gallery-dl resolved ${images.length} item(s) from ${host}`);
+      return {
+        url: rawUrl,
+        siteTitle: `Gallery from ${host}`,
+        totalFound: images.length,
+        images,
+      };
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (code !== "ENOENT") {
+        this.logger.debug(`gallery-dl skipped ${rawUrl}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+      return null;
+    }
   }
 }

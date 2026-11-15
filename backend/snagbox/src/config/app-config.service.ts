@@ -67,6 +67,18 @@ export class AppConfigService {
     return this.config.get("DIRECT_DOWNLOAD_MAX_BYTES", { infer: true });
   }
 
+  get cobaltApiUrl(): string {
+    return this.config.get("COBALT_API_URL", { infer: true }).trim().replace(/\/+$/, "");
+  }
+
+  get cobaltApiKey(): string {
+    return this.config.get("COBALT_API_KEY", { infer: true }).trim();
+  }
+
+  get galleryDlPath(): string {
+    return this.config.get("GALLERY_DL_PATH", { infer: true }).trim() || "gallery-dl";
+  }
+
   get ytdlpVersion(): string {
     return this.config.get("YTDLP_VERSION", { infer: true }).trim();
   }

@@ -6,6 +6,7 @@ import { AppConfigService } from "../config/app-config.service";
 import { DirectDownloadService } from "./direct-download.service";
 import { MediaCache } from "./media-cache";
 import { TikTokEmbedProvider } from "./providers/tiktok-embed.provider";
+import { CobaltProvider } from "./providers/cobalt.provider";
 import type { MediaProvider, ProviderMedia } from "./providers/types";
 import { CancelledError, RunDownloadInput, YtdlpService } from "./ytdlp.service";
 
@@ -32,9 +33,10 @@ export class ExtractionService {
     private readonly direct: DirectDownloadService,
     private readonly config: AppConfigService,
     private readonly cache: MediaCache,
+    cobalt: CobaltProvider,
     tiktokEmbed: TikTokEmbedProvider,
   ) {
-    this.providers = [tiktokEmbed];
+    this.providers = [cobalt, tiktokEmbed];
   }
 
   async getMediaInfo(url: string): Promise<MediaInfo> {
@@ -65,7 +67,7 @@ export class ExtractionService {
     } catch (primaryError) {
       const media = await this.tryProviders(url, platform, primaryError);
       if (!media) throw primaryError;
-      return this.toMediaInfo(media, url, platform ?? "tiktok");
+      return this.toMediaInfo(media, url, platform ?? "generic");
     }
   }
 
