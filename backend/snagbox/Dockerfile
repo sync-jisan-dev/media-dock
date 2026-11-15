@@ -42,21 +42,21 @@ RUN set -eu; \
   echo "${sum}  /usr/local/bin/yt-dlp" | sha256sum -c -; \
   chmod 755 /usr/local/bin/yt-dlp; \
   yt-dlp --version
-# Hugging Face Spaces runs as user with UID 1000
-RUN useradd -m -u 1000 user
-ENV HOME=/home/user
-WORKDIR /home/user/app
+# The official Node image already provides the unprivileged `node` user at UID
+# 1000, which also satisfies Hugging Face Spaces' runtime requirement.
+ENV HOME=/home/node
+WORKDIR /home/node/app
 
-COPY --chown=user:user --from=build /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/prisma.config.ts ./
-COPY --chown=user:user --from=build /app/dist ./dist
-COPY --chown=user:user --from=build /app/prisma ./prisma
-COPY --chown=user:user --from=build /app/packages ./packages
-COPY --chown=user:user --from=build /app/node_modules ./node_modules
-COPY --chown=user:user --from=build /app/assets ./assets
+COPY --chown=node:node --from=build /app/package.json /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/prisma.config.ts ./
+COPY --chown=node:node --from=build /app/dist ./dist
+COPY --chown=node:node --from=build /app/prisma ./prisma
+COPY --chown=node:node --from=build /app/packages ./packages
+COPY --chown=node:node --from=build /app/node_modules ./node_modules
+COPY --chown=node:node --from=build /app/assets ./assets
 
-RUN mkdir -p /home/user/app/downloads /home/user/app/temp && chown -R user:user /home/user
+RUN mkdir -p /home/node/app/downloads /home/node/app/temp && chown -R node:node /home/node
 
-USER user
+USER node
 
 LABEL org.opencontainers.image.title="Snagbox" \
       org.opencontainers.image.description="Paste a link, snag the media: a self-hostable downloader API." \
