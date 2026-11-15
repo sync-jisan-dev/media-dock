@@ -13,7 +13,9 @@
 **/build/
 .pnpm-store/
 .npm/
-**/downloads/
+# Runtime media output (do not ignore source packages named "downloads")
+/downloads/
+/backend/snagbox/downloads/
 **/bin/
 *.log
 
