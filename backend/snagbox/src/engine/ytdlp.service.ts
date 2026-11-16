@@ -110,6 +110,7 @@ export class YtdlpService {
         const inv = this.binaries.ytdlp;
         const args = [
           ...buildBaseArgs(ctx, opts.playlist),
+          ...(detectPlatform(url) === "youtube" ? ["--force-ipv4"] : []),
           ...filterAttemptArgs(ctx.extraArgs, attempt),
           ...opArgs,
           "--",

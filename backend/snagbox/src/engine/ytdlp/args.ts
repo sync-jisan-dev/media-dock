@@ -5,13 +5,13 @@ import type {
   VideoFormat,
   VideoQuality,
 } from "@snagbox/shared";
-import { AUDIO_FORMATS, VIDEO_FORMATS } from "@snagbox/shared";
+import { AUDIO_FORMATS, VIDEO_FORMATS, detectPlatform } from "@snagbox/shared";
 import { PROGRESS_TEMPLATE } from "../progress";
 import type { Attempt } from "../resilience";
 
 /**
  * YouTube player clients, in the order yt-dlp should try them.
- * `default` leads so nothing changes for videos that already work.
+ * Let yt-dlp choose its supported clients for the current extractor version.
  */
 export const YOUTUBE_CLIENTS = "default";
 
@@ -101,6 +101,7 @@ export function buildDownloadArgs(
 ): string[] {
   const args = [
     ...buildBaseArgs(ctx),
+    ...(detectPlatform(attempt.url) === "youtube" ? ["--force-ipv4"] : []),
     ...filterAttemptArgs(ctx.extraArgs, attempt),
     "--newline",
     "--progress-template",
