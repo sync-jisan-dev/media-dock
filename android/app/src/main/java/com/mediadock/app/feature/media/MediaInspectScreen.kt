@@ -53,6 +53,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
@@ -88,11 +89,18 @@ import com.mediadock.app.domain.model.MediaDetails
 fun MediaInspectScreen(
     viewModel: MediaInspectViewModel,
     onNavigateToDownloads: () -> Unit,
+    onNavigateToSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val mediaResource by viewModel.mediaDetailsState.collectAsState()
     val imagesResource by viewModel.extractedImagesState.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
+    val submitting by viewModel.isSubmitting.collectAsState()
+    val downloadError by viewModel.downloadError.collectAsState()
+    val snackbar = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
+    LaunchedEffect(downloadError) {
+        downloadError?.let { snackbar.showSnackbar(it); viewModel.downloadError.value = null }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvent.collect { target ->
@@ -100,78 +108,94 @@ fun MediaInspectScreen(
         }
     }
 
-    when (val resource = mediaResource) {
-        is Resource.Loading -> {
-            MediaDockLoadingIndicator(message = "Analyzing media link...")
-        }
-        is Resource.Error -> {
-            if (imagesResource is Resource.Success && (imagesResource as Resource.Success<List<ExtractedImage>>).data.isNotEmpty()) {
-                val images = (imagesResource as Resource.Success<List<ExtractedImage>>).data
-                ImagesOnlyView(
-                    images = images,
-                    viewModel = viewModel,
-                    modifier = modifier
-                )
-            } else {
-                MediaDockEmptyState(
-                    icon = Icons.Default.ErrorOutline,
-                    title = "Analysis Failed",
-                    message = resource.message,
-                    actionLabel = "Try Again",
-                    onActionClick = { viewModel.retry() }
-                )
+    Box(modifier.fillMaxSize()) {
+        when (val resource = mediaResource) {
+            is Resource.Loading -> {
+                MediaDockLoadingIndicator(message = "Connecting and finding your media…\nA free server may take a minute to wake up.")
             }
-        }
-        is Resource.Success -> {
-            val details = resource.data
-            Column(modifier = modifier.fillMaxSize()) {
-                // Header Thumbnail & Title
-                MediaHeaderCard(details = details)
-
-                // Navigation Tabs with Spring Indicator
-                TabRow(
-                    selectedTabIndex = selectedTab.ordinal,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = SlimeLime,
-                    indicator = { tabPositions ->
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
-                            color = SlimeLime,
-                            height = 3.dp
-                        )
-                    }
-                ) {
-                    InspectTab.entries.forEach { tab ->
-                        Tab(
-                            selected = selectedTab == tab,
-                            onClick = { viewModel.selectTab(tab) },
-                            text = {
-                                Text(
-                                    text = tab.name,
-                                    fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (selectedTab == tab) SlimeLime else MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        )
-                    }
-                }
-
-                // Tab Content with animated slide
-                AnimatedVisibility(
-                    visible = true,
-                    enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)) + slideInVertically { 30 }
-                ) {
-                    when (selectedTab) {
-                        InspectTab.ALL -> AllTabContent(details, viewModel, imagesResource)
-                        InspectTab.VIDEO -> VideoTabContent(details, viewModel)
-                        InspectTab.AUDIO -> AudioTabContent(details, viewModel)
-                        InspectTab.IMAGES -> ImagesTabContent(imagesResource, viewModel)
-                        InspectTab.GIF -> GifTabContent(details, viewModel)
-                    }
+            is Resource.Error -> {
+                if (imagesResource is Resource.Loading) {
+                    MediaDockLoadingIndicator(message = "Looking for images on this page…")
+                } else if (imagesResource is Resource.Success && (imagesResource as Resource.Success<List<ExtractedImage>>).data.isNotEmpty()) {
+                    val images = (imagesResource as Resource.Success<List<ExtractedImage>>).data
+                    ImagesOnlyView(
+                        images = images,
+                        viewModel = viewModel,
+                        modifier = modifier
+                    )
+                } else {
+                    val isConnectionError = resource.message.contains("Cannot reach", ignoreCase = true) ||
+                            resource.message.contains("connect", ignoreCase = true) ||
+                            resource.message.contains("Settings", ignoreCase = true)
+                    MediaDockEmptyState(
+                        icon = Icons.Default.ErrorOutline,
+                        title = if (isConnectionError) "Connection Failed" else "Analysis Failed",
+                        message = resource.message,
+                        actionLabel = "Try Again",
+                        onActionClick = { viewModel.retry() },
+                        secondaryActionLabel = if (isConnectionError && onNavigateToSettings != null) "Check Server Settings" else null,
+                        onSecondaryActionClick = onNavigateToSettings
+                    )
                 }
             }
+            is Resource.Success -> {
+                val details = resource.data
+                Column(modifier = modifier.fillMaxSize()) {
+                    // Header Thumbnail & Title
+                    MediaHeaderCard(details = details)
+
+                    // Navigation Tabs with Spring Indicator
+                    ScrollableTabRow(
+                        selectedTabIndex = selectedTab.ordinal,
+                        edgePadding = 8.dp,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = SlimeLime,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
+                                color = SlimeLime,
+                                height = 3.dp
+                            )
+                        }
+                    ) {
+                        InspectTab.entries.forEach { tab ->
+                            Tab(
+                                selected = selectedTab == tab,
+                                onClick = { viewModel.selectTab(tab) },
+                                text = {
+                                    Text(
+                                        text = tab.name,
+                                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (selectedTab == tab) SlimeLime else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            )
+                        }
+                    }
+
+                    // Tab Content with animated slide
+                    AnimatedVisibility(
+                        visible = true,
+                        enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)) + slideInVertically { 30 }
+                    ) {
+                        when (selectedTab) {
+                            InspectTab.ALL -> AllTabContent(details, viewModel)
+                            InspectTab.VIDEO -> VideoTabContent(details, viewModel)
+                            InspectTab.AUDIO -> AudioTabContent(details, viewModel)
+                            InspectTab.IMAGES -> ImagesTabContent(imagesResource, viewModel)
+                            InspectTab.GIF -> GifTabContent(details, viewModel)
+                        }
+                    }
+                }
+            }
+            is Resource.Idle -> {}
         }
-        is Resource.Idle -> {}
+    if (submitting) {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface.copy(alpha = .85f)).clickable(enabled = true, onClick = {}), contentAlignment = Alignment.Center) {
+            MediaDockLoadingIndicator(message = "Adding to your downloads…")
+        }
+    }
+    androidx.compose.material3.SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
 }
 
@@ -672,123 +696,80 @@ private fun ImagesOnlyView(
 @Composable
 private fun AllTabContent(
     details: MediaDetails,
-    viewModel: MediaInspectViewModel,
-    imagesResource: Resource<List<ExtractedImage>>
+    viewModel: MediaInspectViewModel
 ) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
+    val videoQuality by viewModel.selectedVideoQuality.collectAsState()
+    val audioFormat by viewModel.selectedAudioFormat.collectAsState()
+    val videoFormat by viewModel.selectedVideoFormat.collectAsState()
+    LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        item { Text("Download media as", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
         item {
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .bouncyClickable { viewModel.selectTab(InspectTab.VIDEO) }
-                    .border(1.dp, RadioactiveGrass.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkSpruce),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(imageVector = Icons.Default.Movie, contentDescription = null, tint = SlimeLime, modifier = Modifier.size(24.dp))
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Download Video", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "Available up to ${details.videoQualities.firstOrNull() ?: "1080p"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Button(
-                        onClick = { viewModel.downloadVideo(details) },
-                        colors = ButtonDefaults.buttonColors(containerColor = SlimeLime, contentColor = DarkSpruce)
-                    ) {
-                        Text(text = "Get Video", fontWeight = FontWeight.Bold)
-                    }
+            Text("Music", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(12.dp))
+            DownloadOptionGrid(details.audioFormats.ifEmpty { listOf("mp3", "m4a") }, audioFormat, "Audio format") {
+                viewModel.selectedAudioFormat.value = it
+            }
+            Spacer(Modifier.height(10.dp))
+            OutlinedButton(onClick = { viewModel.downloadAudio(details) }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
+                Icon(Icons.Default.Audiotrack, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Download ${audioFormat.uppercase()}")
+            }
+        }
+        item {
+            Text("Video quality", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(12.dp))
+            DownloadOptionGrid(details.videoQualities.ifEmpty { listOf("highest") }, videoQuality, videoFormat.uppercase()) {
+                viewModel.selectedVideoQuality.value = it
+            }
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { viewModel.downloadVideo(details) }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
+                Icon(Icons.Default.Download, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Download video", fontWeight = FontWeight.Bold)
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = { viewModel.selectTab(InspectTab.GIF) }, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Gif, null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Create GIF")
+                }
+                OutlinedButton(onClick = { viewModel.selectTab(InspectTab.IMAGES) }, modifier = Modifier.weight(1f)) {
+                    Icon(Icons.Default.Image, null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Images")
                 }
             }
         }
+    }
+}
 
-        item {
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .bouncyClickable { viewModel.selectTab(InspectTab.AUDIO) }
-                    .border(1.dp, BrightFern.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkSpruce),
-                        contentAlignment = Alignment.Center
+@Composable
+private fun DownloadOptionGrid(options: List<String>, selected: String, subtitle: String, onSelect: (String) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        options.chunked(3).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                row.forEach { option ->
+                    val active = option == selected
+                    Surface(
+                        onClick = { onSelect(option) },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                        border = androidx.compose.foundation.BorderStroke(
+                            if (active) 2.dp else 1.dp,
+                            if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                        )
                     ) {
-                        Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null, tint = Chartreuse, modifier = Modifier.size(24.dp))
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Extract Audio", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "Direct MP3 / M4A extraction with album art", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Button(
-                        onClick = { viewModel.downloadAudio(details) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Chartreuse, contentColor = DarkSpruce)
-                    ) {
-                        Text(text = "Get Audio", fontWeight = FontWeight.Bold)
+                        Column(Modifier.padding(horizontal = 6.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(if (option == "highest") "BEST" else option.uppercase(), style = MaterialTheme.typography.titleSmall, color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
+                            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
-            }
-        }
-
-        item {
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .bouncyClickable { viewModel.selectTab(InspectTab.GIF) }
-                    .border(1.dp, ForestGreen.copy(alpha = 0.35f), RoundedCornerShape(18.dp))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(DarkSpruce),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(imageVector = Icons.Default.Gif, contentDescription = null, tint = RadioactiveGrass, modifier = Modifier.size(28.dp))
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "Create Animated GIF", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "Convert video clip to GIF", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    Button(
-                        onClick = { viewModel.selectTab(InspectTab.GIF) },
-                        colors = ButtonDefaults.buttonColors(containerColor = RadioactiveGrass, contentColor = DarkSpruce)
-                    ) {
-                        Text(text = "Create GIF", fontWeight = FontWeight.Bold)
-                    }
-                }
+                repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }

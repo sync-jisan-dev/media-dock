@@ -10,6 +10,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.mediadock.app.core.designsystem.theme.MediaDockMotion
 import com.mediadock.app.feature.downloads.DownloadsScreen
+import com.mediadock.app.feature.browser.BrowserScreen
 import com.mediadock.app.feature.downloads.DownloadsViewModel
 import com.mediadock.app.feature.history.HistoryScreen
 import com.mediadock.app.feature.history.HistoryViewModel
@@ -38,15 +39,25 @@ fun MediaDockNavHost(
     ) {
         composable(Screen.Home.route) {
             val homeViewModel: HomeViewModel = hiltViewModel()
-            if (!sharedUrl.isNullOrBlank()) {
-                homeViewModel.handleSharedUrl(sharedUrl)
-            }
+            androidx.compose.runtime.LaunchedEffect(sharedUrl) { homeViewModel.handleSharedUrl(sharedUrl) }
             HomeScreen(
                 viewModel = homeViewModel,
+                onBrowse = { query ->
+                    if (query.isBlank()) navController.navigate(Screen.Explore.route)
+                    else navController.navigate(Screen.Browser.createRoute(query))
+                },
+                onLibrary = { navController.navigate(Screen.History.route) },
                 onNavigateToInspect = { url ->
                     navController.navigate(Screen.MediaInspect.createRoute(url))
                 }
             )
+        }
+
+        composable(Screen.Explore.route) {
+            BrowserScreen(initialUrl = "", onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) })
+        }
+        composable(Screen.Browser.route, arguments = listOf(navArgument("url") { type = NavType.StringType })) { entry ->
+            BrowserScreen(initialUrl = entry.arguments?.getString("url").orEmpty(), onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) })
         }
 
         composable(
@@ -62,6 +73,9 @@ fun MediaDockNavHost(
                     navController.navigate(Screen.Downloads.route) {
                         popUpTo(Screen.Home.route)
                     }
+                },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
                 }
             )
         }

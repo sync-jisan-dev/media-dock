@@ -120,6 +120,18 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        item {
+            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Folder, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(16.dp))
+                    Column {
+                        Text("Your media. Your way.", style = MaterialTheme.typography.titleLarge)
+                        Text("Personalize your MediaDock experience", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
         // Theme / Appearance
         item {
             Text(
@@ -153,9 +165,9 @@ fun SettingsScreen(
                                 label = {
                                     Text(
                                         text = when (mode) {
-                                            ThemeMode.SYSTEM -> stringResource(R.string.theme_system)
-                                            ThemeMode.LIGHT -> stringResource(R.string.theme_light)
-                                            ThemeMode.DARK -> stringResource(R.string.theme_dark)
+                                            ThemeMode.SYSTEM -> "System"
+                                            ThemeMode.LIGHT -> "Light"
+                                            ThemeMode.DARK -> "Dark"
                                         },
                                         fontWeight = FontWeight.Bold
                                     )
@@ -291,6 +303,39 @@ fun SettingsScreen(
                         Text(text = prefs.serverUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = prefs.serverUrl.contains("10.0.2.2"),
+                    onClick = { viewModel.setServerUrl("http://10.0.2.2:3000/") },
+                    label = { Text("PC Emulator") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = SlimeLime,
+                        selectedLabelColor = DarkSpruce
+                    )
+                )
+                FilterChip(
+                    selected = prefs.serverUrl.contains("192.168.0.102"),
+                    onClick = { viewModel.setServerUrl("http://192.168.0.102:3000/") },
+                    label = { Text("Wi-Fi (PC)") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = SlimeLime,
+                        selectedLabelColor = DarkSpruce
+                    )
+                )
+                FilterChip(
+                    selected = prefs.serverUrl.contains("onrender.com"),
+                    onClick = { viewModel.setServerUrl("https://media-dock.onrender.com/") },
+                    label = { Text("Cloud 24/7") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = SlimeLime,
+                        selectedLabelColor = DarkSpruce
+                    )
+                )
             }
         }
 

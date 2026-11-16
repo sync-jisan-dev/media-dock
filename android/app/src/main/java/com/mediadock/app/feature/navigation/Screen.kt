@@ -5,6 +5,10 @@ import java.nio.charset.StandardCharsets
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
+    data object Explore : Screen("explore")
+    data object Browser : Screen("browser/{url}") {
+        fun createRoute(url: String) = "browser/${URLEncoder.encode(url, StandardCharsets.UTF_8.toString())}"
+    }
     data object Downloads : Screen("downloads")
     data object History : Screen("history")
     data object Settings : Screen("settings")

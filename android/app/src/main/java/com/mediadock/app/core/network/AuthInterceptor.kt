@@ -13,6 +13,7 @@ class AuthInterceptor @Inject constructor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val original = chain.request()
+        if (original.isDirectFileRequest()) return chain.proceed(original)
         val path = original.url.encodedPath
 
         // Skip auth for guest session creation, health check, or direct file streaming

@@ -10,6 +10,9 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.PersonOutline
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -33,9 +36,10 @@ import com.mediadock.app.core.designsystem.theme.DockInk
 
 enum class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
     HOME("home", R.string.nav_home, Icons.Rounded.Home),
+    EXPLORE("explore", R.string.nav_explore, Icons.Rounded.Explore),
     DOWNLOADS("downloads", R.string.nav_downloads, Icons.Rounded.Download),
-    HISTORY("history", R.string.nav_history, Icons.Rounded.History),
-    SETTINGS("settings", R.string.nav_settings, Icons.Rounded.Settings)
+    HISTORY("history", R.string.nav_history, Icons.Rounded.FolderOpen),
+    SETTINGS("settings", R.string.nav_settings, Icons.Rounded.PersonOutline)
 }
 
 @Composable

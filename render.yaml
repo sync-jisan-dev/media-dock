@@ -1,33 +1,30 @@
 services:
   - type: web
-    name: mediadock-backend
+    name: media-dock
     runtime: docker
     dockerfilePath: backend/snagbox/Dockerfile
     dockerContext: backend/snagbox
     plan: free
     region: oregon
+    healthCheckPath: /api/health
     envVars:
       - key: DATABASE_URL
-        value: postgresql://neondb_owner:npg_kaj7qvWDsA5n@ep-summer-scene-be1iseuv-pooler.c-9.us-east-2.aws.neon.tech/neondb?channel_binding=require&sslmode=require
+        sync: false
       - key: DATABASE_URL_UNPOOLED
-        value: postgresql://neondb_owner:npg_kaj7qvWDsA5n@ep-summer-scene-be1iseuv.c-9.us-east-2.aws.neon.tech/neondb?channel_binding=require&sslmode=require
+        sync: false
       - key: GUEST_SESSION_SECRET
-        value: dev-guest-secret-key-change-in-production-min32chars
+        generateValue: true
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: FILE_LINK_SECRET
+        generateValue: true
       - key: AUTH_DISABLED
         value: "true"
       - key: STORAGE_DRIVER
-        value: "local"
+        value: local
       - key: ALLOW_GENERIC_URLS
         value: "true"
-      - key: NEON_AUTH_BASE_URL
-        value: https://ep-summer-scene-be1iseuv.neonauth.c-9.us-east-2.aws.neon.tech/neondb/auth
-      - key: NEON_AUTH_JWKS_URL
-        value: https://ep-summer-scene-be1iseuv.neonauth.c-9.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json
-      - key: NEON_REALTIME_URL
-        value: wss://ep-summer-scene-be1iseuv.rt.c-9.us-east-2.aws.neon.tech/
-      - key: NEON_REALTIME_SECRET
-        value: nrt_live_1ruOD1l8WQwRZs-Qc-O12ls7Qwf7kJsCCEgqT3cnlJak
-      - key: NEON_AI_GATEWAY_TOKEN
-        value: nt_live_a4301d6a7c5e_daHxjqtI2aEaEyJ1zH9tumv7hOheG2on
-      - key: NEON_AI_GATEWAY_BASE_URL
-        value: https://br-square-cherry-be4w87uc-api.ai.c-9.us-east-2.aws.neon.tech
+      - key: MAX_CONCURRENT_JOBS
+        value: "1"
+      - key: LOG_LEVEL
+        value: info

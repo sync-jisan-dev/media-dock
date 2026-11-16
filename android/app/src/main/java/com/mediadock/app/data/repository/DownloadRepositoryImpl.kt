@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -71,7 +72,7 @@ class DownloadRepositoryImpl @Inject constructor(
         title: String,
         thumbnail: String?
     ): Resource<String> = withContext(Dispatchers.IO) {
-        mediaRepository.ensureSession()
+        if (!mediaRepository.ensureSession()) return@withContext Resource.Error("The server is waking up or is unavailable. Try again shortly.")
         try {
             val response = api.createDownload(request)
             if (response.isSuccessful && response.body() != null) {
@@ -94,7 +95,8 @@ class DownloadRepositoryImpl @Inject constructor(
 
                 Resource.Success(job.id)
             } else {
-                val err = response.errorBody()?.string() ?: "Failed to queue download: HTTP ${response.code()}"
+                val rawErr = response.errorBody()?.string()
+                val err = parseError(rawErr, "Failed to queue download (HTTP ${response.code()})")
                 Resource.Error(err)
             }
         } catch (e: Exception) {
@@ -108,7 +110,7 @@ class DownloadRepositoryImpl @Inject constructor(
         quality: String?,
         format: String?
     ): Resource<List<String>> = withContext(Dispatchers.IO) {
-        mediaRepository.ensureSession()
+        if (!mediaRepository.ensureSession()) return@withContext Resource.Error("The server is waking up or is unavailable. Try again shortly.")
         try {
             val batchDto = CreateBatchRequestDto(
                 urls = urls,
@@ -138,7 +140,8 @@ class DownloadRepositoryImpl @Inject constructor(
                 }
                 Resource.Success(ids)
             } else {
-                val err = response.errorBody()?.string() ?: "Batch request failed: HTTP ${response.code()}"
+                val rawErr = response.errorBody()?.string()
+                val err = parseError(rawErr, "Batch request failed (HTTP ${response.code()})")
                 Resource.Error(err)
             }
         } catch (e: Exception) {
@@ -151,7 +154,7 @@ class DownloadRepositoryImpl @Inject constructor(
         title: String?,
         format: String?
     ): Resource<String> = withContext(Dispatchers.IO) {
-        mediaRepository.ensureSession()
+        if (!mediaRepository.ensureSession()) return@withContext Resource.Error("The server is waking up or is unavailable. Try again shortly.")
         try {
             val response = api.downloadImage(DownloadImageRequestDto(url, title, format))
             if (response.isSuccessful && response.body() != null) {
@@ -188,7 +191,8 @@ class DownloadRepositoryImpl @Inject constructor(
 
                 Resource.Success(job.id)
             } else {
-                val err = response.errorBody()?.string() ?: "Image download failed"
+                val rawErr = response.errorBody()?.string()
+                val err = parseError(rawErr, "Image download failed (HTTP ${response.code()})")
                 Resource.Error(err)
             }
         } catch (e: Exception) {
@@ -305,4 +309,19 @@ class DownloadRepositoryImpl @Inject constructor(
     override fun searchHistory(query: String): Flow<List<HistoryEntity>> = historyDao.searchHistory(query)
     override suspend fun deleteHistory(id: Long) = historyDao.delete(id)
     override suspend fun clearHistory() = historyDao.clearAll()
+
+    private fun parseError(raw: String?, defaultMessage: String): String {
+        if (raw.isNullOrBlank()) return defaultMessage
+        return try {
+            val json = JSONObject(raw)
+            val message = json.optString("message")
+            if (message.isNotBlank() && !message.startsWith("{") && message.length < 180) {
+                message
+            } else {
+                defaultMessage
+            }
+        } catch (_: Exception) {
+            if (raw.length < 180 && !raw.startsWith("{")) raw else defaultMessage
+        }
+    }
 }

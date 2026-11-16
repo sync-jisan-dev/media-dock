@@ -20,8 +20,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 import javax.inject.Inject
 
 enum class InspectTab {
@@ -37,13 +35,12 @@ class MediaInspectViewModel @Inject constructor(
     private val downloadImageUseCase: DownloadImageUseCase
 ) : ViewModel() {
 
-    private val rawUrl: String = savedStateHandle.get<String>("url")?.let {
-        try {
-            URLDecoder.decode(it, StandardCharsets.UTF_8.toString())
-        } catch (_: Exception) {
-            it
-        }
-    } ?: ""
+    // Navigation has already decoded the route argument. Decoding again corrupts
+    // literal plus signs and percent-encoded data in signed media URLs.
+    private val rawUrl: String = savedStateHandle.get<String>("url").orEmpty()
+
+    val isSubmitting = MutableStateFlow(false)
+    val downloadError = MutableStateFlow<String?>(null)
 
     private val _mediaDetailsState = MutableStateFlow<Resource<MediaDetails>>(Resource.Loading)
     val mediaDetailsState: StateFlow<Resource<MediaDetails>> = _mediaDetailsState.asStateFlow()
@@ -117,10 +114,7 @@ class MediaInspectViewModel @Inject constructor(
             val imagesDeferred = async { extractImagesUseCase(url) }
 
             val mediaRes = inspectDeferred.await()
-            val imagesRes = imagesDeferred.await()
-
             _mediaDetailsState.value = mediaRes
-            _extractedImagesState.value = imagesRes
 
             if (mediaRes is Resource.Success) {
                 val details = mediaRes.data
@@ -130,6 +124,7 @@ class MediaInspectViewModel @Inject constructor(
                 selectedAudioFormat.value = details.audioFormats.firstOrNull() ?: "mp3"
                 gifEndTime.value = (details.durationSeconds ?: 10L).coerceAtMost(15L)
             }
+            _extractedImagesState.value = imagesDeferred.await()
         }
     }
 
@@ -142,10 +137,7 @@ class MediaInspectViewModel @Inject constructor(
                 format = selectedVideoFormat.value,
                 embedSubtitles = embedSubtitles.value
             )
-            val res = createDownloadUseCase(request, details.title, details.thumbnail)
-            if (res is Resource.Success) {
-                _navigationEvent.emit("downloads")
-            }
+            submitDownload(request, details.title, details.thumbnail)
         }
     }
 
@@ -158,10 +150,7 @@ class MediaInspectViewModel @Inject constructor(
                 format = selectedAudioFormat.value,
                 embedThumbnail = embedAudioThumbnail.value
             )
-            val res = createDownloadUseCase(request, details.title, details.thumbnail)
-            if (res is Resource.Success) {
-                _navigationEvent.emit("downloads")
-            }
+            submitDownload(request, details.title, details.thumbnail)
         }
     }
 
@@ -174,20 +163,44 @@ class MediaInspectViewModel @Inject constructor(
                 clipStart = gifStartTime.value,
                 clipEnd = gifEndTime.value
             )
-            val res = createDownloadUseCase(request, "${details.title} (GIF)", details.thumbnail)
-            if (res is Resource.Success) {
-                _navigationEvent.emit("downloads")
-            }
+            submitDownload(request, "${details.title} (GIF)", details.thumbnail)
         }
     }
 
     fun downloadSelectedImages(images: List<ExtractedImage>) {
         viewModelScope.launch {
-            val toDownload = images.filter { selectedImageIds.value.contains(it.id) }
-            for (img in toDownload) {
-                downloadImageUseCase(img.url, img.title, img.format)
+            if (isSubmitting.value) return@launch
+            isSubmitting.value = true
+            downloadError.value = null
+            try {
+                val toDownload = images.filter { selectedImageIds.value.contains(it.id) }
+                for (img in toDownload) {
+                    when (val result = downloadImageUseCase(img.url, img.title, img.format)) {
+                        is Resource.Success -> selectedImageIds.value = selectedImageIds.value - img.id
+                        is Resource.Error -> {
+                            downloadError.value = result.message
+                            return@launch
+                        }
+                        else -> return@launch
+                    }
+                }
+                if (toDownload.isNotEmpty()) _navigationEvent.emit("downloads")
+            } finally {
+                isSubmitting.value = false
             }
-            _navigationEvent.emit("downloads")
         }
+    }
+
+    private suspend fun submitDownload(request: CreateDownloadRequestDto, title: String, thumbnail: String?) {
+        if (isSubmitting.value) return
+        isSubmitting.value = true
+        downloadError.value = null
+        try {
+            when (val result = createDownloadUseCase(request, title, thumbnail)) {
+                is Resource.Success -> _navigationEvent.emit("downloads")
+                is Resource.Error -> downloadError.value = result.message
+                else -> Unit
+            }
+        } finally { isSubmitting.value = false }
     }
 }

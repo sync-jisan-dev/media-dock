@@ -28,9 +28,9 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - mediadock_downloads:/app/downloads
+      - mediadock_downloads:/home/node/app/downloads
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/v2/health/liveness"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
       interval: 15s
       timeout: 5s
       retries: 3

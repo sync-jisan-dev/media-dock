@@ -21,6 +21,9 @@ import retrofit2.http.Url
 
 interface MediaDockApi {
 
+    @GET("api/health")
+    suspend fun checkLiveness(): Response<Map<String, String>>
+
     @POST("app/v1/sessions/guest")
     suspend fun createGuestSession(): Response<GuestSessionResponseDto>
 

@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 val isRootScreen = currentRoute == Screen.Home.route ||
+                        currentRoute == Screen.Explore.route ||
                         currentRoute == Screen.Downloads.route ||
                         currentRoute == Screen.History.route ||
                         currentRoute == Screen.Settings.route
@@ -67,9 +68,10 @@ class MainActivity : ComponentActivity() {
                 val screenTitle = when (currentRoute) {
                     Screen.Home.route -> "MediaDock"
                     Screen.Downloads.route -> "Downloads"
-                    Screen.History.route -> "History"
-                    Screen.Settings.route -> "Settings"
-                    else -> "MediaDock"
+                    Screen.History.route -> "My files"
+                    Screen.Settings.route -> "My MediaDock"
+                    Screen.Explore.route -> "Browse"
+                    else -> "Download media"
                 }
 
                 Scaffold(

@@ -10,11 +10,11 @@
         android:pathData="M0,0h108v108h-108z" />
     <!-- Indigo depth accent -->
     <path
-        android:fillColor="#4B43D6"
+        android:fillColor="#0874BE"
         android:pathData="M0,0 L108,108 L108,0 Z" />
     <!-- Soft brand halo -->
     <path
-        android:fillColor="#635BFF"
+        android:fillColor="#168DE2"
         android:pathData="M54,54m-42,0a42,42 0,1 1,84 0a42,42 0,1 1,-84 0" />
     <path
         android:fillColor="#101526"

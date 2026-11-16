@@ -55,7 +55,9 @@ class PreferencesDataStore @Inject constructor(
 
         AppPreferences(
             themeMode = themeMode,
-            serverUrl = prefs[PreferencesKeys.SERVER_URL] ?: ApiConstants.DEFAULT_BASE_URL,
+            serverUrl = prefs[PreferencesKeys.SERVER_URL]
+                ?.takeUnless { it.trimEnd('/') == ApiConstants.LEGACY_TUNNEL_URL.trimEnd('/') }
+                ?: ApiConstants.DEFAULT_BASE_URL,
             defaultVideoQuality = prefs[PreferencesKeys.DEFAULT_VIDEO_QUALITY] ?: "1080p",
             defaultAudioFormat = prefs[PreferencesKeys.DEFAULT_AUDIO_FORMAT] ?: "mp3",
             maxConcurrentDownloads = prefs[PreferencesKeys.MAX_CONCURRENT] ?: 2,
