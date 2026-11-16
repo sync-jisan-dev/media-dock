@@ -75,6 +75,14 @@ export class AppConfigService {
     return this.config.get("COBALT_API_KEY", { infer: true }).trim();
   }
 
+  get apifyEnabled(): boolean {
+    return this.config.get("APIFY_ENABLED", { infer: true });
+  }
+
+  get apifyApiToken(): string {
+    return this.config.get("APIFY_API_TOKEN", { infer: true }).trim();
+  }
+
   get galleryDlPath(): string {
     return this.config.get("GALLERY_DL_PATH", { infer: true }).trim() || "gallery-dl";
   }

@@ -32,15 +32,55 @@ function fixture() {
     name: "second", supports: jest.fn().mockReturnValue(true),
     extract: jest.fn().mockResolvedValue(media("https://cdn.example.com/second.mp4")),
   };
+  const apify = {
+    supports: jest.fn().mockReturnValue(false), canDownload: jest.fn().mockReturnValue(false),
+    getMediaInfo: jest.fn(), runDownload: jest.fn(),
+  };
   const service = new ExtractionService(
     ytdlp as never, {} as never, { mediaCacheTtlMs: 0 } as never,
     {} as never, first as never, second as never,
+    apify as never,
   );
   const transfer = jest.spyOn(service as any, "downloadDirect").mockResolvedValue(undefined);
-  return { service, ytdlp, first, second, transfer, primaryError };
+  return { service, ytdlp, first, second, transfer, primaryError, apify };
 }
 
 describe("ExtractionService provider fallback", () => {
+  it("returns cloud metadata immediately when it succeeds", async () => {
+    const f = fixture();
+    f.apify.supports.mockReturnValue(true);
+    f.apify.getMediaInfo.mockResolvedValue({ title: "Cloud result" });
+    expect(await f.service.getMediaInfo(sourceUrl)).toEqual({ title: "Cloud result" });
+    expect(f.ytdlp.extractInfo).not.toHaveBeenCalled();
+    expect(f.first.extract).not.toHaveBeenCalled();
+  });
+
+  it("stops after a successful cloud download", async () => {
+    const f = fixture();
+    f.apify.canDownload.mockReturnValue(true);
+    f.apify.runDownload.mockResolvedValue(undefined);
+    await f.service.runDownload(input);
+    expect(f.ytdlp.runDownload).not.toHaveBeenCalled();
+    expect(f.first.extract).not.toHaveBeenCalled();
+  });
+
+  it("continues after a cloud service failure", async () => {
+    const f = fixture();
+    f.apify.canDownload.mockReturnValue(true);
+    f.apify.runDownload.mockRejectedValue(new Error("Free allowance exhausted"));
+    f.ytdlp.runDownload.mockResolvedValue(undefined);
+    await f.service.runDownload(input);
+    expect(f.ytdlp.runDownload).toHaveBeenCalledTimes(1);
+    expect(f.first.extract).not.toHaveBeenCalled();
+  });
+
+  it("propagates cloud cancellation without starting the next extractor", async () => {
+    const f = fixture();
+    f.apify.canDownload.mockReturnValue(true);
+    f.apify.runDownload.mockRejectedValue(new CancelledError());
+    await expect(f.service.runDownload(input)).rejects.toBeInstanceOf(CancelledError);
+    expect(f.ytdlp.runDownload).not.toHaveBeenCalled();
+  });
   it("stops after the primary extractor succeeds", async () => {
     const f = fixture();
     f.ytdlp.runDownload.mockResolvedValue(undefined);

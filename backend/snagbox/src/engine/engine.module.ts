@@ -6,6 +6,7 @@ import { MediaCache } from "./media-cache";
 import { TikTokEmbedProvider } from "./providers/tiktok-embed.provider";
 import { CobaltProvider } from "./providers/cobalt.provider";
 import { YtdlpService } from "./ytdlp.service";
+import { ApifyDownloaderService } from "./providers/apify-downloader.service";
 
 @Global()
 @Module({
@@ -13,6 +14,7 @@ import { YtdlpService } from "./ytdlp.service";
     BinariesService,
     YtdlpService,
     DirectDownloadService,
+    ApifyDownloaderService,
     TikTokEmbedProvider,
     CobaltProvider,
     MediaCache,

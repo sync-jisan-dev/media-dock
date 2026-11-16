@@ -7,20 +7,11 @@ import { DirectDownloadService } from "./direct-download.service";
 import { MediaCache } from "./media-cache";
 import { TikTokEmbedProvider } from "./providers/tiktok-embed.provider";
 import { CobaltProvider } from "./providers/cobalt.provider";
+import { ApifyDownloaderService } from "./providers/apify-downloader.service";
 import type { MediaProvider, ProviderMedia } from "./providers/types";
 import { CancelledError, RunDownloadInput, YtdlpService } from "./ytdlp.service";
 
-/**
- * Resolves media through whichever engine can actually reach it.
- *
- * yt-dlp is always tried first: it supports every platform, every quality and
- * every container, and nothing else here comes close. But its extractors read
- * the same watch pages the platforms defend, so when TikTok answers with a WAF
- * challenge — or Facebook with a page shell its parser does not know — yt-dlp
- * has no path to the media and retrying only asks the same blocked question
- * again. The providers behind it reach the media a different way entirely, and
- * a request only fails once every engine has been tried.
- */
+/** Tries enabled cloud extraction, yt-dlp, and alternate providers in order. */
 @Injectable()
 export class ExtractionService {
   private readonly logger = new Logger(ExtractionService.name);
@@ -35,6 +26,7 @@ export class ExtractionService {
     private readonly cache: MediaCache,
     cobalt: CobaltProvider,
     tiktokEmbed: TikTokEmbedProvider,
+    private readonly apify: ApifyDownloaderService,
   ) {
     this.providers = [cobalt, tiktokEmbed];
   }
@@ -62,6 +54,13 @@ export class ExtractionService {
 
   private async resolveInfo(url: string): Promise<MediaInfo> {
     const platform = detectPlatform(url);
+    if (this.apify.supports(url)) {
+      try {
+        return await this.apify.getMediaInfo(url);
+      } catch {
+        this.logger.warn("Apify metadata failed; trying the next extractor");
+      }
+    }
     try {
       return await this.ytdlp.extractInfo(url);
     } catch (primaryError) {
@@ -94,13 +93,22 @@ export class ExtractionService {
   }
 
   /**
-   * Downloads through yt-dlp, falling back to a provider's direct URL.
+   * Tries cloud downloads, yt-dlp, and provider URLs until a file transfer succeeds.
    *
    * The fallback is a genuinely different route to the bytes, so it is worth
    * taking even though it gives up quality selection: one playable file beats a
    * perfectly-specified failure.
    */
   async runDownload(input: RunDownloadInput & { kind: "audio" | "video"; format: string }): Promise<void> {
+    if (this.apify.canDownload(input)) {
+      try {
+        await this.apify.runDownload(input);
+        return;
+      } catch (error) {
+        if (error instanceof CancelledError || input.isCancelled?.()) throw error;
+        this.logger.warn("Apify download failed; trying the next extractor");
+      }
+    }
     try {
       await this.ytdlp.runDownload(input);
       return;

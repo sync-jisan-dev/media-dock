@@ -116,6 +116,8 @@ export const envSchema = z.object({
   COBALT_API_URL: z.string().optional().default(""),
   /** Api-Key token configured on the self-hosted cobalt instance. */
   COBALT_API_KEY: z.string().optional().default(""),
+  APIFY_ENABLED: booleanish("false"),
+  APIFY_API_TOKEN: z.string().optional().default(""),
   /** gallery-dl executable used by the image gallery extractor. */
   GALLERY_DL_PATH: z.string().optional().default("gallery-dl"),
   FFMPEG_PATH: z.string().optional().default(""),
