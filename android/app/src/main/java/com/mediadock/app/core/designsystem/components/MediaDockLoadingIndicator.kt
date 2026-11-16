@@ -24,8 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.mediadock.app.core.designsystem.theme.DockAqua
-import com.mediadock.app.core.designsystem.theme.DockIndigo
 
 @Composable
 fun MediaDockLoadingIndicator(
@@ -56,11 +54,11 @@ fun MediaDockLoadingIndicator(
                     modifier = Modifier
                         .size(64.dp)
                         .scale(scale)
-                        .background(DockIndigo.copy(alpha = 0.16f), CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), CircleShape)
                 )
                 CircularProgressIndicator(
-                    color = DockIndigo,
-                    trackColor = DockAqua.copy(alpha = 0.18f),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
                     strokeWidth = 4.dp,
                     modifier = Modifier.size(48.dp)
                 )

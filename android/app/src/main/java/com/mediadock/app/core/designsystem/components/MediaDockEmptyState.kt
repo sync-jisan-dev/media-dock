@@ -1,5 +1,8 @@
 package com.mediadock.app.core.designsystem.components
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,18 +31,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.R
-import com.mediadock.app.core.designsystem.theme.BorderSpruce
-import com.mediadock.app.core.designsystem.theme.DarkElevatedSpruce
-import com.mediadock.app.core.designsystem.theme.DarkSurfaceSpruce
-import com.mediadock.app.core.designsystem.theme.ObsidianCanvas
-import com.mediadock.app.core.designsystem.theme.SlimeLime
-import com.mediadock.app.core.designsystem.theme.TextPrimary
-import com.mediadock.app.core.designsystem.theme.TextSecondary
 import org.json.JSONObject
 
 @Composable
@@ -75,115 +73,57 @@ fun MediaDockEmptyState(
         }
     }
 
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxSize()) {
+        val viewportHeight = maxHeight
+        val showIllustration = viewportHeight >= 300.dp
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .padding(24.dp)
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = viewportHeight)
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Image(
-                painter = painterResource(R.drawable.media_dock_hero),
-                contentDescription = null,
-                modifier = Modifier
-                    .size(140.dp)
-                    .clip(RoundedCornerShape(20.dp))
-            )
-
-            Spacer(Modifier.height(20.dp))
-
-            // Status Icon Pill
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(CircleShape)
-                    .background(DarkElevatedSpruce)
-                    .border(1.dp, BorderSpruce, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = icon,
+            if (showIllustration) {
+                Image(
+                    painter = painterResource(R.drawable.media_dock_hero),
                     contentDescription = null,
-                    modifier = Modifier.size(26.dp),
-                    tint = SlimeLime
+                    colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
+                    modifier = Modifier.size(112.dp).clip(RoundedCornerShape(20.dp))
                 )
+            } else {
+                Icon(icon, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
             }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
+            Spacer(Modifier.height(16.dp))
             Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                title,
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Card container for message
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(DarkSurfaceSpruce)
-                    .border(1.dp, BorderSpruce, RoundedCornerShape(14.dp))
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = cleanMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center
-                )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                cleanMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            if (!actionLabel.isNullOrBlank()) {
+                Spacer(Modifier.height(20.dp))
+                Button(
+                    onClick = onActionClick,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) { Text(actionLabel) }
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Action Buttons
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                if (!actionLabel.isNullOrBlank()) {
-                    Button(
-                        onClick = onActionClick,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = SlimeLime,
-                            contentColor = ObsidianCanvas
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth(0.75f)
-                            .height(48.dp)
-                    ) {
-                        Text(
-                            text = actionLabel,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                }
-
-                if (!secondaryActionLabel.isNullOrBlank() && onSecondaryActionClick != null) {
-                    OutlinedButton(
-                        onClick = onSecondaryActionClick,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth(0.75f)
-                            .height(44.dp)
-                    ) {
-                        Text(
-                            text = secondaryActionLabel,
-                            color = SlimeLime,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
+            if (!secondaryActionLabel.isNullOrBlank() && onSecondaryActionClick != null) {
+                Spacer(Modifier.height(10.dp))
+                OutlinedButton(
+                    onClick = onSecondaryActionClick,
+                    modifier = Modifier.fillMaxWidth().height(48.dp),
+                    shape = RoundedCornerShape(14.dp)
+                ) { Text(secondaryActionLabel) }
             }
         }
     }

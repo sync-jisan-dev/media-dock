@@ -15,7 +15,7 @@
             android:fillColor="#00000000"
             android:pathData="M22,54 A32,32 0 0,1 86,54"
             android:strokeWidth="4"
-            android:strokeColor="#91D7FF"
+            android:strokeColor="#cbcbcb"
             android:strokeLineCap="round" />
 
         <!-- Dock base cradle -->
@@ -23,31 +23,31 @@
             android:fillColor="#00000000"
             android:pathData="M24,68 L24,82 A6,6 0 0,0 30,88 L78,88 A6,6 0 0,0 84,82 L84,68"
             android:strokeWidth="8"
-            android:strokeColor="#55BEFA"
+            android:strokeColor="#acacac"
             android:strokeLineCap="round"
             android:strokeLineJoin="round" />
 
         <!-- Dock center notch -->
         <path
-            android:fillColor="#B9E5FF"
+            android:fillColor="#dedede"
             android:pathData="M48,88 L60,88 L58,82 L50,82 Z" />
 
         <!-- Download arrow -->
         <path
-            android:fillColor="#FFFFFF"
+            android:fillColor="#ffffff"
             android:pathData="M50,18 L58,18 L58,54 L50,54 Z" />
 
         <!-- Download arrow head -->
         <path
-            android:fillColor="#55BEFA"
+            android:fillColor="#acacac"
             android:pathData="M54,72 L32,46 L44,46 L54,58 L64,46 L76,46 Z"
             android:strokeWidth="2"
-            android:strokeColor="#B9E5FF"
+            android:strokeColor="#dedede"
             android:strokeLineJoin="round" />
 
         <!-- Media play emblem -->
         <path
-            android:fillColor="#101526"
+            android:fillColor="#151515"
             android:pathData="M51,46 L58,51 L51,56 Z" />
     </group>
 </vector>

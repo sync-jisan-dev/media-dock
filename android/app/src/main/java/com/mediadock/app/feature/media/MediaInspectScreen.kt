@@ -1,5 +1,7 @@
 package com.mediadock.app.feature.media
 
+import com.mediadock.app.core.designsystem.icons.HugeIcons
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -29,14 +31,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Gif
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.Movie
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -73,14 +67,10 @@ import coil.compose.AsyncImage
 import com.mediadock.app.R
 import com.mediadock.app.core.common.FormattingUtils
 import com.mediadock.app.core.common.Resource
+import com.mediadock.app.core.designsystem.components.MediaDockPillTabs
+import com.mediadock.app.core.designsystem.components.MediaDockDownloadAction
 import com.mediadock.app.core.designsystem.components.MediaDockEmptyState
 import com.mediadock.app.core.designsystem.components.MediaDockLoadingIndicator
-import com.mediadock.app.core.designsystem.theme.BrightFern
-import com.mediadock.app.core.designsystem.theme.Chartreuse
-import com.mediadock.app.core.designsystem.theme.DarkSpruce
-import com.mediadock.app.core.designsystem.theme.ForestGreen
-import com.mediadock.app.core.designsystem.theme.RadioactiveGrass
-import com.mediadock.app.core.designsystem.theme.SlimeLime
 import com.mediadock.app.core.designsystem.theme.bouncyClickable
 import com.mediadock.app.domain.model.ExtractedImage
 import com.mediadock.app.domain.model.MediaDetails
@@ -128,7 +118,7 @@ fun MediaInspectScreen(
                             resource.message.contains("connect", ignoreCase = true) ||
                             resource.message.contains("Settings", ignoreCase = true)
                     MediaDockEmptyState(
-                        icon = Icons.Default.ErrorOutline,
+                        icon = HugeIcons.ErrorOutline,
                         title = if (isConnectionError) "Connection Failed" else "Analysis Failed",
                         message = resource.message,
                         actionLabel = "Try Again",
@@ -144,34 +134,12 @@ fun MediaInspectScreen(
                     // Header Thumbnail & Title
                     MediaHeaderCard(details = details)
 
-                    // Navigation Tabs with Spring Indicator
-                    ScrollableTabRow(
-                        selectedTabIndex = selectedTab.ordinal,
-                        edgePadding = 8.dp,
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = SlimeLime,
-                        indicator = { tabPositions ->
-                            TabRowDefaults.SecondaryIndicator(
-                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab.ordinal]),
-                                color = SlimeLime,
-                                height = 3.dp
-                            )
-                        }
-                    ) {
-                        InspectTab.entries.forEach { tab ->
-                            Tab(
-                                selected = selectedTab == tab,
-                                onClick = { viewModel.selectTab(tab) },
-                                text = {
-                                    Text(
-                                        text = tab.name,
-                                        fontWeight = if (selectedTab == tab) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (selectedTab == tab) SlimeLime else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            )
-                        }
-                    }
+                    MediaDockPillTabs(
+                        labels = listOf("All", "Video", "Audio", "Images", "GIF"),
+                        selectedIndex = selectedTab.ordinal,
+                        onSelected = { viewModel.selectTab(InspectTab.entries[it]) },
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                    )
 
                     // Tab Content with animated slide
                     AnimatedVisibility(
@@ -191,9 +159,7 @@ fun MediaInspectScreen(
             is Resource.Idle -> {}
         }
     if (submitting) {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface.copy(alpha = .85f)).clickable(enabled = true, onClick = {}), contentAlignment = Alignment.Center) {
-            MediaDockLoadingIndicator(message = "Adding to your downloads…")
-        }
+        androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth())
     }
     androidx.compose.material3.SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
@@ -218,7 +184,7 @@ private fun MediaHeaderCard(details: MediaDetails) {
                     modifier = Modifier
                         .size(92.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .border(1.5.dp, RadioactiveGrass.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
+                        .border(1.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
                 )
                 Spacer(modifier = Modifier.width(16.dp))
             }
@@ -234,7 +200,7 @@ private fun MediaHeaderCard(details: MediaDetails) {
                     Text(
                         text = details.uploader,
                         style = MaterialTheme.typography.bodySmall,
-                        color = SlimeLime,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -242,13 +208,13 @@ private fun MediaHeaderCard(details: MediaDetails) {
                     Spacer(modifier = Modifier.height(3.dp))
                     Surface(
                         shape = RoundedCornerShape(6.dp),
-                        color = DarkSpruce
+                        color = MaterialTheme.colorScheme.onPrimary
                     ) {
                         Text(
                             text = "⏱ ${FormattingUtils.formatDuration(details.durationSeconds)}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
-                            color = Chartreuse,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -281,12 +247,12 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                         onClick = { viewModel.selectedVideoQuality.value = q },
                         label = { Text(text = q.uppercase(), fontWeight = FontWeight.Bold) },
                         leadingIcon = if (selectedQuality == q) {
-                            { Icon(imageVector = Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                            { Icon(imageVector = HugeIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = SlimeLime,
-                            selectedLabelColor = DarkSpruce,
-                            selectedLeadingIconColor = DarkSpruce
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                 }
@@ -303,8 +269,8 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                         onClick = { viewModel.selectedVideoFormat.value = fmt },
                         label = { Text(text = fmt.uppercase(), fontWeight = FontWeight.Bold) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Chartreuse,
-                            selectedLabelColor = DarkSpruce
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                 }
@@ -331,8 +297,8 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                         checked = embedSubs,
                         onCheckedChange = { viewModel.embedSubtitles.value = it },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = DarkSpruce,
-                            checkedTrackColor = SlimeLime
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -349,13 +315,13 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                     .bouncyClickable { viewModel.downloadVideo(details) },
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = SlimeLime,
-                    contentColor = DarkSpruce
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = DarkSpruce)
+                Icon(imageVector = HugeIcons.Download, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Download Video (${selectedQuality.uppercase()})", fontWeight = FontWeight.Black, color = DarkSpruce)
+                Text(text = "Download Video (${selectedQuality.uppercase()})", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
@@ -384,8 +350,8 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                         onClick = { viewModel.selectedAudioFormat.value = fmt },
                         label = { Text(text = fmt.uppercase(), fontWeight = FontWeight.Bold) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Chartreuse,
-                            selectedLabelColor = DarkSpruce
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                 }
@@ -402,8 +368,8 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                         onClick = { viewModel.selectedAudioQuality.value = q },
                         label = { Text(text = q.replaceFirstChar { it.uppercase() }) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = SlimeLime,
-                            selectedLabelColor = DarkSpruce
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                 }
@@ -430,8 +396,8 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                         checked = embedArt,
                         onCheckedChange = { viewModel.embedAudioThumbnail.value = it },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = DarkSpruce,
-                            checkedTrackColor = SlimeLime
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -448,13 +414,13 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
                     .bouncyClickable { viewModel.downloadAudio(details) },
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = SlimeLime,
-                    contentColor = DarkSpruce
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Icon(imageVector = Icons.Default.Audiotrack, contentDescription = null, tint = DarkSpruce)
+                Icon(imageVector = HugeIcons.Audiotrack, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Download Audio (${selectedFormat.uppercase()})", fontWeight = FontWeight.Black, color = DarkSpruce)
+                Text(text = "Download Audio (${selectedFormat.uppercase()})", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
@@ -491,9 +457,9 @@ private fun GifTabContent(details: MediaDetails, viewModel: MediaInspectViewMode
                         onValueChange = { viewModel.gifStartTime.value = it.toLong() },
                         valueRange = 0f..maxDuration.coerceAtMost(300f),
                         colors = SliderDefaults.colors(
-                            thumbColor = SlimeLime,
-                            activeTrackColor = SlimeLime,
-                            inactiveTrackColor = ForestGreen
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.primary
                         )
                     )
 
@@ -507,9 +473,9 @@ private fun GifTabContent(details: MediaDetails, viewModel: MediaInspectViewMode
                         },
                         valueRange = 0f..maxDuration.coerceAtMost(300f),
                         colors = SliderDefaults.colors(
-                            thumbColor = Chartreuse,
-                            activeTrackColor = Chartreuse,
-                            inactiveTrackColor = ForestGreen
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.primary
                         )
                     )
                 }
@@ -526,13 +492,13 @@ private fun GifTabContent(details: MediaDetails, viewModel: MediaInspectViewMode
                     .bouncyClickable { viewModel.downloadGif(details) },
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = SlimeLime,
-                    contentColor = DarkSpruce
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Icon(imageVector = Icons.Default.Gif, contentDescription = null, modifier = Modifier.size(26.dp), tint = DarkSpruce)
+                Icon(imageVector = HugeIcons.Gif, contentDescription = null, modifier = Modifier.size(26.dp), tint = MaterialTheme.colorScheme.onPrimary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = stringResource(R.string.gif_generate), fontWeight = FontWeight.Black, color = DarkSpruce)
+                Text(text = stringResource(R.string.gif_generate), fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
@@ -546,7 +512,7 @@ private fun ImagesTabContent(
     when (imagesResource) {
         is Resource.Loading -> MediaDockLoadingIndicator(message = "Extracting images...")
         is Resource.Error -> MediaDockEmptyState(
-            icon = Icons.Default.Image,
+            icon = HugeIcons.Image,
             title = "No Images Found",
             message = imagesResource.message
         )
@@ -554,7 +520,7 @@ private fun ImagesTabContent(
             val images = imagesResource.data
             if (images.isEmpty()) {
                 MediaDockEmptyState(
-                    icon = Icons.Default.Image,
+                    icon = HugeIcons.Image,
                     title = "No Images",
                     message = "No images could be extracted from this webpage."
                 )
@@ -606,7 +572,7 @@ private fun ImagesGridView(
                         .clip(RoundedCornerShape(12.dp))
                         .border(
                             width = if (isSelected) 3.dp else 1.dp,
-                            color = if (isSelected) SlimeLime else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                             shape = RoundedCornerShape(12.dp)
                         )
                         .clickable { viewModel.toggleImageSelection(image.id) }
@@ -620,16 +586,16 @@ private fun ImagesGridView(
                     if (isSelected) {
                         Surface(
                             shape = CircleShape,
-                            color = SlimeLime,
+                            color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
                                 .padding(6.dp)
                                 .size(24.dp)
                                 .align(Alignment.TopEnd)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Check,
+                                imageVector = HugeIcons.Check,
                                 contentDescription = null,
-                                tint = DarkSpruce,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.padding(4.dp)
                             )
                         }
@@ -652,13 +618,13 @@ private fun ImagesGridView(
                         .bouncyClickable { viewModel.downloadSelectedImages(images) },
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = SlimeLime,
-                        contentColor = DarkSpruce
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Icon(imageVector = Icons.Default.Download, contentDescription = null, tint = DarkSpruce)
+                    Icon(imageVector = HugeIcons.Download, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = "Download ${selectedIds.size} Selected Images", fontWeight = FontWeight.Black, color = DarkSpruce)
+                    Text(text = "Download ${selectedIds.size} Selected Images", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
@@ -698,6 +664,7 @@ private fun AllTabContent(
     details: MediaDetails,
     viewModel: MediaInspectViewModel
 ) {
+    val busy by viewModel.isSubmitting.collectAsState()
     val videoQuality by viewModel.selectedVideoQuality.collectAsState()
     val audioFormat by viewModel.selectedAudioFormat.collectAsState()
     val videoFormat by viewModel.selectedVideoFormat.collectAsState()
@@ -710,11 +677,7 @@ private fun AllTabContent(
                 viewModel.selectedAudioFormat.value = it
             }
             Spacer(Modifier.height(10.dp))
-            OutlinedButton(onClick = { viewModel.downloadAudio(details) }, modifier = Modifier.fillMaxWidth().height(48.dp)) {
-                Icon(Icons.Default.Audiotrack, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Download ${audioFormat.uppercase()}")
-            }
+            MediaDockDownloadAction("Download ${audioFormat.uppercase()}", busy, { viewModel.downloadAudio(details) })
         }
         item {
             Text("Video quality", style = MaterialTheme.typography.titleMedium)
@@ -723,21 +686,17 @@ private fun AllTabContent(
                 viewModel.selectedVideoQuality.value = it
             }
             Spacer(Modifier.height(12.dp))
-            Button(onClick = { viewModel.downloadVideo(details) }, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(16.dp)) {
-                Icon(Icons.Default.Download, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Download video", fontWeight = FontWeight.Bold)
-            }
+            MediaDockDownloadAction("Download video", busy, { viewModel.downloadVideo(details) })
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedButton(onClick = { viewModel.selectTab(InspectTab.GIF) }, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Gif, null)
+                    Icon(HugeIcons.Gif, null)
                     Spacer(Modifier.width(6.dp))
                     Text("Create GIF")
                 }
                 OutlinedButton(onClick = { viewModel.selectTab(InspectTab.IMAGES) }, modifier = Modifier.weight(1f)) {
-                    Icon(Icons.Default.Image, null)
+                    Icon(HugeIcons.Image, null)
                     Spacer(Modifier.width(6.dp))
                     Text("Images")
                 }
@@ -757,15 +716,15 @@ private fun DownloadOptionGrid(options: List<String>, selected: String, subtitle
                         onClick = { onSelect(option) },
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(14.dp),
-                        color = if (active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
+                        color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
                         border = androidx.compose.foundation.BorderStroke(
                             if (active) 2.dp else 1.dp,
                             if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
                         )
                     ) {
                         Column(Modifier.padding(horizontal = 6.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(if (option == "highest") "BEST" else option.uppercase(), style = MaterialTheme.typography.titleSmall, color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-                            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(if (option == "highest") "BEST" else option.uppercase(), style = MaterialTheme.typography.titleSmall, color = if (active) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = if (active) MaterialTheme.colorScheme.onPrimary.copy(alpha = .7f) else MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }

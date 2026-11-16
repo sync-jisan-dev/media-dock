@@ -1,5 +1,7 @@
 package com.mediadock.app.core.designsystem.components
 
+import com.mediadock.app.core.designsystem.icons.HugeIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -8,9 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,8 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.mediadock.app.core.designsystem.theme.DockAqua
-import com.mediadock.app.core.designsystem.theme.DockIndigo
 
 @Composable
 fun MediaDockTopBar(
@@ -43,15 +40,15 @@ fun MediaDockTopBar(
                         modifier = Modifier
                             .size(38.dp)
                             .background(
-                                Brush.linearGradient(listOf(DockIndigo, DockAqua)),
+                                Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary)),
                                 RoundedCornerShape(12.dp)
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
+                            imageVector = HugeIcons.PlayArrow,
                             contentDescription = null,
-                            tint = androidx.compose.ui.graphics.Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(23.dp)
                         )
                     }
@@ -67,7 +64,7 @@ fun MediaDockTopBar(
         navigationIcon = {
             if (canNavigateBack) {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                    Icon(HugeIcons.ArrowBack, contentDescription = "Back")
                 }
             }
         },

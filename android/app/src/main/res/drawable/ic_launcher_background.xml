@@ -6,17 +6,17 @@
     android:viewportHeight="108">
     <!-- MediaDock midnight base -->
     <path
-        android:fillColor="#101526"
+        android:fillColor="#151515"
         android:pathData="M0,0h108v108h-108z" />
     <!-- Indigo depth accent -->
     <path
-        android:fillColor="#0874BE"
+        android:fillColor="#626262"
         android:pathData="M0,0 L108,108 L108,0 Z" />
     <!-- Soft brand halo -->
     <path
-        android:fillColor="#168DE2"
+        android:fillColor="#7a7a7a"
         android:pathData="M54,54m-42,0a42,42 0,1 1,84 0a42,42 0,1 1,-84 0" />
     <path
-        android:fillColor="#101526"
+        android:fillColor="#151515"
         android:pathData="M54,54m-38,0a38,38 0,1 1,76 0a38,38 0,1 1,-76 0" />
 </vector>

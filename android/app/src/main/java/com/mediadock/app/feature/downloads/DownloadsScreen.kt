@@ -1,5 +1,7 @@
 package com.mediadock.app.feature.downloads
 
+import com.mediadock.app.core.designsystem.icons.HugeIcons
+
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.core.Spring
@@ -21,14 +23,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cancel
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.FileOpen
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -53,11 +47,7 @@ import coil.compose.AsyncImage
 import com.mediadock.app.R
 import com.mediadock.app.core.common.FormattingUtils
 import com.mediadock.app.core.designsystem.components.MediaDockEmptyState
-import com.mediadock.app.core.designsystem.theme.Chartreuse
-import com.mediadock.app.core.designsystem.theme.DarkSpruce
-import com.mediadock.app.core.designsystem.theme.ForestGreen
-import com.mediadock.app.core.designsystem.theme.RadioactiveGrass
-import com.mediadock.app.core.designsystem.theme.SlimeLime
+import com.mediadock.app.core.designsystem.components.MediaDockTransferStatus
 import com.mediadock.app.core.designsystem.theme.bouncyClickable
 import com.mediadock.app.domain.model.ActiveDownload
 import com.mediadock.app.domain.model.DownloadJobStatus
@@ -73,7 +63,7 @@ fun DownloadsScreen(
 
     if (downloads.isEmpty()) {
         MediaDockEmptyState(
-            icon = Icons.Default.Download,
+            icon = HugeIcons.Download,
             title = stringResource(R.string.no_active_downloads),
             message = "Paste a link or share media from another app to begin downloading.",
             actionLabel = "Add Media Link",
@@ -96,7 +86,7 @@ fun DownloadsScreen(
                         modifier = Modifier
                             .size(8.dp, 24.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(SlimeLime)
+                            .background(MaterialTheme.colorScheme.primary)
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
@@ -171,7 +161,7 @@ private fun DownloadItemCard(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = if (item.status == DownloadJobStatus.DOWNLOADING) RadioactiveGrass.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                color = if (item.status == DownloadJobStatus.DOWNLOADING) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(18.dp)
             )
     ) {
@@ -202,13 +192,13 @@ private fun DownloadItemCard(
                     ) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
-                            color = DarkSpruce
+                            color = MaterialTheme.colorScheme.onPrimary
                         ) {
                             Text(
                                 text = item.mediaType.uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Chartreuse,
+                                color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -230,26 +220,16 @@ private fun DownloadItemCard(
 
                 // Delete / Dismiss
                 IconButton(onClick = onDelete) {
-                    Icon(imageVector = Icons.Default.Close, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(imageVector = HugeIcons.Close, contentDescription = "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Spring Animated Progress Bar
-            LinearProgressIndicator(
-                progress = { animatedProgress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-                color = when (item.status) {
-                    DownloadJobStatus.COMPLETED -> SlimeLime
-                    DownloadJobStatus.FAILED -> MaterialTheme.colorScheme.error
-                    DownloadJobStatus.PAUSED -> RadioactiveGrass
-                    else -> SlimeLime
-                },
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            MediaDockTransferStatus(
+                label = item.status.name.lowercase().replaceFirstChar { it.uppercase() },
+                progress = animatedProgress,
+                completed = item.status == DownloadJobStatus.COMPLETED
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -261,16 +241,6 @@ private fun DownloadItemCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(
-                        text = "${item.status.name} • ${item.progress.toInt()}%",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = when (item.status) {
-                            DownloadJobStatus.COMPLETED -> SlimeLime
-                            DownloadJobStatus.FAILED -> MaterialTheme.colorScheme.error
-                            else -> MaterialTheme.colorScheme.primary
-                        }
-                    )
                     if (item.speed > 0) {
                         Text(
                             text = "${FormattingUtils.formatSpeed(item.speed)} • ${FormattingUtils.formatDuration(item.eta)} left",
@@ -284,31 +254,31 @@ private fun DownloadItemCard(
                     when (item.status) {
                         DownloadJobStatus.DOWNLOADING, DownloadJobStatus.PROCESSING -> {
                             IconButton(onClick = onPause, modifier = Modifier.bouncyClickable(onClick = onPause)) {
-                                Icon(imageVector = Icons.Default.Pause, contentDescription = "Pause", tint = SlimeLime)
+                                Icon(imageVector = HugeIcons.Pause, contentDescription = "Pause", tint = MaterialTheme.colorScheme.primary)
                             }
                             IconButton(onClick = onCancel, modifier = Modifier.bouncyClickable(onClick = onCancel)) {
-                                Icon(imageVector = Icons.Default.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error)
+                                Icon(imageVector = HugeIcons.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error)
                             }
                         }
                         DownloadJobStatus.PAUSED -> {
                             IconButton(onClick = onResume, modifier = Modifier.bouncyClickable(onClick = onResume)) {
-                                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Resume", tint = RadioactiveGrass)
+                                Icon(imageVector = HugeIcons.PlayArrow, contentDescription = "Resume", tint = MaterialTheme.colorScheme.primary)
                             }
                             IconButton(onClick = onCancel, modifier = Modifier.bouncyClickable(onClick = onCancel)) {
-                                Icon(imageVector = Icons.Default.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error)
+                                Icon(imageVector = HugeIcons.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error)
                             }
                         }
                         DownloadJobStatus.COMPLETED -> {
                             IconButton(onClick = onOpen, modifier = Modifier.bouncyClickable(onClick = onOpen)) {
-                                Icon(imageVector = Icons.Default.FileOpen, contentDescription = "Open", tint = Chartreuse)
+                                Icon(imageVector = HugeIcons.FileOpen, contentDescription = "Open", tint = MaterialTheme.colorScheme.primary)
                             }
                             IconButton(onClick = onShare, modifier = Modifier.bouncyClickable(onClick = onShare)) {
-                                Icon(imageVector = Icons.Default.Share, contentDescription = "Share", tint = RadioactiveGrass)
+                                Icon(imageVector = HugeIcons.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                         DownloadJobStatus.FAILED -> {
                             IconButton(onClick = onResume, modifier = Modifier.bouncyClickable(onClick = onResume)) {
-                                Icon(imageVector = Icons.Default.PlayArrow, contentDescription = "Retry", tint = SlimeLime)
+                                Icon(imageVector = HugeIcons.PlayArrow, contentDescription = "Retry", tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                         else -> {}

@@ -1,5 +1,7 @@
 package com.mediadock.app.feature.browser
 
+import com.mediadock.app.core.designsystem.icons.HugeIcons
+
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.net.Uri
@@ -13,10 +15,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.ArrowForward
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -87,8 +85,8 @@ fun BrowserScreen(initialUrl: String, onDownload: (String) -> Unit, modifier: Mo
         OutlinedTextField(
             address, { address = it }, Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             placeholder = { Text("Search or enter web address") }, singleLine = true,
-            leadingIcon = { Icon(Icons.Rounded.Search, null) },
-            trailingIcon = { IconButton(onClick = { open(address) }) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Open address") } },
+            leadingIcon = { Icon(HugeIcons.Search, null) },
+            trailingIcon = { IconButton(onClick = { open(address) }) { Icon(HugeIcons.ArrowForward, "Open address") } },
             shape = RoundedCornerShape(18.dp),
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Go),
             keyboardActions = androidx.compose.foundation.text.KeyboardActions(onGo = { open(address) })
@@ -98,11 +96,11 @@ fun BrowserScreen(initialUrl: String, onDownload: (String) -> Unit, modifier: Mo
             AndroidView(factory = { webView }, modifier = Modifier.weight(1f).fillMaxWidth())
             Surface(shadowElevation = 4.dp) {
                 Row(Modifier.fillMaxWidth().padding(8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceEvenly) {
-                    IconButton(onClick = { webView.goBack() }, enabled = canGoBack) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "Previous page") }
-                    IconButton(onClick = { webView.goForward() }, enabled = canGoForward) { Icon(Icons.AutoMirrored.Rounded.ArrowForward, "Next page") }
-                    IconButton(onClick = { webView.reload() }) { Icon(Icons.Rounded.Refresh, "Reload page") }
+                    IconButton(onClick = { webView.goBack() }, enabled = canGoBack) { Icon(HugeIcons.ArrowBack, "Previous page") }
+                    IconButton(onClick = { webView.goForward() }, enabled = canGoForward) { Icon(HugeIcons.ArrowForward, "Next page") }
+                    IconButton(onClick = { webView.reload() }) { Icon(HugeIcons.Refresh, "Reload page") }
                     Button(onClick = { downloadCallback(currentUrl) }, enabled = Uri.parse(currentUrl).scheme in listOf("http", "https")) {
-                        Icon(Icons.Rounded.Download, null)
+                        Icon(HugeIcons.Download, null)
                         Spacer(Modifier.width(6.dp))
                         Text("Download")
                     }
@@ -124,7 +122,7 @@ fun BrowserScreen(initialUrl: String, onDownload: (String) -> Unit, modifier: Mo
                                 Text(platform.name, style = MaterialTheme.typography.titleMedium)
                                 Text(platform.supportedTypes.joinToString(" · "), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
+                            Icon(HugeIcons.ChevronRight, null, tint = MaterialTheme.colorScheme.primary)
                         }
                     }
                 }

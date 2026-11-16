@@ -1,5 +1,7 @@
 package com.mediadock.app.feature.settings
 
+import com.mediadock.app.core.designsystem.icons.HugeIcons
+
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,15 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.NetworkCheck
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.VideoSettings
-import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -53,11 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.R
 import com.mediadock.app.core.datastore.ThemeMode
-import com.mediadock.app.core.designsystem.theme.Chartreuse
-import com.mediadock.app.core.designsystem.theme.DarkSpruce
-import com.mediadock.app.core.designsystem.theme.ForestGreen
-import com.mediadock.app.core.designsystem.theme.RadioactiveGrass
-import com.mediadock.app.core.designsystem.theme.SlimeLime
 import com.mediadock.app.core.designsystem.theme.bouncyClickable
 
 @Composable
@@ -103,7 +91,7 @@ fun SettingsScreen(
                     viewModel.setServerUrl(tempServerUrl.trim())
                     showServerUrlDialog = false
                 }) {
-                    Text(text = "Save", color = SlimeLime, fontWeight = FontWeight.Bold)
+                    Text(text = "Save", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -123,9 +111,9 @@ fun SettingsScreen(
         item {
             Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                 Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Folder, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(HugeIcons.Folder, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.width(16.dp))
-                    Column {
+                    Column(Modifier.weight(1f)) {
                         Text("Your media. Your way.", style = MaterialTheme.typography.titleLarge)
                         Text("Personalize your MediaDock experience", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -148,7 +136,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.DarkMode, contentDescription = null, tint = SlimeLime)
+                        Icon(imageVector = HugeIcons.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(text = stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
                     }
@@ -173,8 +161,8 @@ fun SettingsScreen(
                                     )
                                 },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = SlimeLime,
-                                    selectedLabelColor = DarkSpruce
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                                 )
                             )
                         }
@@ -207,7 +195,7 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Folder, contentDescription = null, tint = SlimeLime)
+                            Icon(imageVector = HugeIcons.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(12.dp))
                             Column {
                                 Text(text = stringResource(R.string.settings_storage_location), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
@@ -220,7 +208,7 @@ fun SettingsScreen(
                         }
                         if (prefs.customDownloadDirectoryUri != null) {
                             TextButton(onClick = { viewModel.setCustomDownloadDir(null) }) {
-                                Text("Reset", color = SlimeLime)
+                                Text("Reset", color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
@@ -228,7 +216,7 @@ fun SettingsScreen(
                     // Max Concurrent Downloads Slider
                     Column {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Speed, contentDescription = null, tint = RadioactiveGrass)
+                            Icon(imageVector = HugeIcons.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
                                 text = "${stringResource(R.string.settings_max_concurrent)}: ${prefs.maxConcurrentDownloads}",
@@ -242,9 +230,9 @@ fun SettingsScreen(
                             valueRange = 1f..5f,
                             steps = 3,
                             colors = SliderDefaults.colors(
-                                thumbColor = SlimeLime,
-                                activeTrackColor = SlimeLime,
-                                inactiveTrackColor = ForestGreen
+                                thumbColor = MaterialTheme.colorScheme.primary,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
@@ -256,7 +244,7 @@ fun SettingsScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = Icons.Default.Wifi, contentDescription = null, tint = Chartreuse)
+                            Icon(imageVector = HugeIcons.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(text = stringResource(R.string.settings_wifi_only), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
                         }
@@ -264,8 +252,8 @@ fun SettingsScreen(
                             checked = prefs.wifiOnlyDownloading,
                             onCheckedChange = { viewModel.setWifiOnly(it) },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = DarkSpruce,
-                                checkedTrackColor = SlimeLime
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
@@ -296,7 +284,7 @@ fun SettingsScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Dns, contentDescription = null, tint = SlimeLime)
+                    Icon(imageVector = HugeIcons.Dns, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(text = "API Endpoint", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
@@ -314,8 +302,8 @@ fun SettingsScreen(
                     onClick = { viewModel.setServerUrl("http://10.0.2.2:3000/") },
                     label = { Text("PC Emulator") },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = SlimeLime,
-                        selectedLabelColor = DarkSpruce
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
                 FilterChip(
@@ -323,8 +311,8 @@ fun SettingsScreen(
                     onClick = { viewModel.setServerUrl("http://192.168.0.102:3000/") },
                     label = { Text("Wi-Fi (PC)") },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = SlimeLime,
-                        selectedLabelColor = DarkSpruce
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
                 FilterChip(
@@ -332,8 +320,8 @@ fun SettingsScreen(
                     onClick = { viewModel.setServerUrl("https://media-dock.onrender.com/") },
                     label = { Text("Cloud 24/7") },
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = SlimeLime,
-                        selectedLabelColor = DarkSpruce
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
             }
@@ -355,7 +343,7 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = Icons.Default.Info, contentDescription = null, tint = SlimeLime)
+                        Icon(imageVector = HugeIcons.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(text = "MediaDock", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
                     }
@@ -365,7 +353,7 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "Version: 1.0.0 (Production Release)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = SlimeLime)
+                    Text(text = "Version: 1.0.0 (Production Release)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                 }
             }
         }

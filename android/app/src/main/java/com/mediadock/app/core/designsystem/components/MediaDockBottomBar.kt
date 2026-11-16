@@ -1,18 +1,12 @@
 package com.mediadock.app.core.designsystem.components
 
+import com.mediadock.app.core.designsystem.icons.HugeIcons
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Explore
-import androidx.compose.material.icons.rounded.FolderOpen
-import androidx.compose.material.icons.rounded.PersonOutline
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -31,15 +25,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.R
-import com.mediadock.app.core.designsystem.theme.DockAqua
-import com.mediadock.app.core.designsystem.theme.DockInk
 
 enum class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
-    HOME("home", R.string.nav_home, Icons.Rounded.Home),
-    EXPLORE("explore", R.string.nav_explore, Icons.Rounded.Explore),
-    DOWNLOADS("downloads", R.string.nav_downloads, Icons.Rounded.Download),
-    HISTORY("history", R.string.nav_history, Icons.Rounded.FolderOpen),
-    SETTINGS("settings", R.string.nav_settings, Icons.Rounded.PersonOutline)
+    HOME("home", R.string.nav_home, HugeIcons.Home),
+    EXPLORE("explore", R.string.nav_explore, HugeIcons.Explore),
+    DOWNLOADS("downloads", R.string.nav_downloads, HugeIcons.Download),
+    HISTORY("history", R.string.nav_history, HugeIcons.FolderOpen),
+    SETTINGS("settings", R.string.nav_settings, HugeIcons.PersonOutline)
 }
 
 @Composable
@@ -82,17 +74,17 @@ fun MediaDockBottomBar(
                             }
                             if (item == BottomNavItem.DOWNLOADS && activeDownloadsCount > 0) {
                                 BadgedBox(badge = {
-                                    Badge(containerColor = DockAqua, contentColor = DockInk) {
+                                    Badge(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
                                         Text(activeDownloadsCount.coerceAtMost(99).toString())
                                     }
                                 }) { iconContent() }
                             } else iconContent()
                         },
-                        label = { Text(stringResource(item.titleRes), style = MaterialTheme.typography.labelSmall) },
+                        label = { Text(stringResource(item.titleRes), style = MaterialTheme.typography.labelSmall, maxLines = 1) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
                             selectedTextColor = MaterialTheme.colorScheme.primary,
-                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            indicatorColor = MaterialTheme.colorScheme.primary,
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )

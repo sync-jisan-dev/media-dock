@@ -4,11 +4,26 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.ExperimentalTextApi
+import com.mediadock.app.R
 import androidx.compose.ui.unit.sp
 
-private val BrandFont = FontFamily.SansSerif
+@OptIn(ExperimentalTextApi::class)
+private val BrandFont = FontFamily(
+    (100..900 step 100).map { weight ->
+        Font(
+            R.font.inter_variable,
+            weight = FontWeight(weight),
+            variationSettings = FontVariation.Settings(FontVariation.weight(weight))
+        )
+    }
+)
 
 val Typography = Typography(
+    displayLarge = TextStyle(fontFamily = BrandFont, fontWeight = FontWeight.Bold, fontSize = 48.sp, lineHeight = 54.sp, letterSpacing = (-1).sp),
+    displayMedium = TextStyle(fontFamily = BrandFont, fontWeight = FontWeight.Bold, fontSize = 40.sp, lineHeight = 46.sp, letterSpacing = (-0.8).sp),
     displaySmall = TextStyle(fontFamily = BrandFont, fontWeight = FontWeight.Bold, fontSize = 36.sp, lineHeight = 42.sp, letterSpacing = (-0.6).sp),
     headlineLarge = TextStyle(fontFamily = BrandFont, fontWeight = FontWeight.Bold, fontSize = 30.sp, lineHeight = 36.sp, letterSpacing = (-0.4).sp),
     headlineMedium = TextStyle(fontFamily = BrandFont, fontWeight = FontWeight.Bold, fontSize = 25.sp, lineHeight = 31.sp, letterSpacing = (-0.25).sp),
