@@ -146,7 +146,10 @@ export class YtdlpService {
   /** Uncached single-engine extraction. Caching lives in ExtractionService. */
   async extractInfo(url: string): Promise<MediaInfo> {
     const platform = detectPlatform(url);
-    const stdout = await this.run(["--dump-json", "--no-download", "--socket-timeout", "8", "--retries", "0", "--extractor-retries", "0"], { url, timeoutMs: 25_000 });
+    const stdout = await this.run(
+      ["--dump-json", "--no-download", "--socket-timeout", "8", "--retries", "0", "--extractor-retries", "0"],
+      { url, timeoutMs: platform === "youtube" ? 90_000 : 25_000 },
+    );
     return normalizeInfo(parseFirstJson<RawInfo>(stdout), url, platform ?? "generic");
   }
 
