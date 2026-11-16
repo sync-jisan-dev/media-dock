@@ -130,14 +130,24 @@ fun MediaInspectScreen(
             }
             is Resource.Success -> {
                 val details = resource.data
+                val availableTabs = buildList {
+                    add(InspectTab.ALL)
+                    if (details.videoFormats.isNotEmpty()) add(InspectTab.VIDEO)
+                    if (details.audioFormats.isNotEmpty()) add(InspectTab.AUDIO)
+                    add(InspectTab.IMAGES)
+                    if ("gif" in details.videoFormats) add(InspectTab.GIF)
+                }
+                val activeTab = selectedTab.takeIf { it in availableTabs } ?: InspectTab.ALL
                 Column(modifier = modifier.fillMaxSize()) {
                     // Header Thumbnail & Title
                     MediaHeaderCard(details = details)
 
                     MediaDockPillTabs(
-                        labels = listOf("All", "Video", "Audio", "Images", "GIF"),
-                        selectedIndex = selectedTab.ordinal,
-                        onSelected = { viewModel.selectTab(InspectTab.entries[it]) },
+                        labels = availableTabs.map { tab ->
+                            if (tab == InspectTab.GIF) "GIF" else tab.name.lowercase().replaceFirstChar { it.uppercase() }
+                        },
+                        selectedIndex = availableTabs.indexOf(activeTab),
+                        onSelected = { viewModel.selectTab(availableTabs[it]) },
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
                     )
 
@@ -146,7 +156,7 @@ fun MediaInspectScreen(
                         visible = true,
                         enter = fadeIn(spring(stiffness = Spring.StiffnessMedium)) + slideInVertically { 30 }
                     ) {
-                        when (selectedTab) {
+                        when (activeTab) {
                             InspectTab.ALL -> AllTabContent(details, viewModel)
                             InspectTab.VIDEO -> VideoTabContent(details, viewModel)
                             InspectTab.AUDIO -> AudioTabContent(details, viewModel)
@@ -670,10 +680,10 @@ private fun AllTabContent(
     val videoFormat by viewModel.selectedVideoFormat.collectAsState()
     LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
         item { Text("Download media as", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) }
-        item {
+        if (details.audioFormats.isNotEmpty()) item {
             Text("Music", style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(12.dp))
-            DownloadOptionGrid(details.audioFormats.ifEmpty { listOf("mp3", "m4a") }, audioFormat, "Audio format") {
+            DownloadOptionGrid(details.audioFormats, audioFormat, "Audio format") {
                 viewModel.selectedAudioFormat.value = it
             }
             Spacer(Modifier.height(10.dp))
@@ -690,7 +700,7 @@ private fun AllTabContent(
         }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = { viewModel.selectTab(InspectTab.GIF) }, modifier = Modifier.weight(1f)) {
+                if ("gif" in details.videoFormats) OutlinedButton(onClick = { viewModel.selectTab(InspectTab.GIF) }, modifier = Modifier.weight(1f)) {
                     Icon(HugeIcons.Gif, null)
                     Spacer(Modifier.width(6.dp))
                     Text("Create GIF")
