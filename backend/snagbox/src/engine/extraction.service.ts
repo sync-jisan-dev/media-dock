@@ -81,6 +81,7 @@ export class ExtractionService {
       if (!provider.supports(url, platform)) continue;
       try {
         const media = await provider.extract(url);
+        if (media.videoUrls.length === 0) throw new Error("Provider returned no downloadable media");
         this.logger.log(
           `yt-dlp could not reach ${url} (${errorText(primaryError)}); recovered via ${provider.name}`,
         );
@@ -107,12 +108,28 @@ export class ExtractionService {
       if (primaryError instanceof CancelledError || input.isCancelled?.()) throw primaryError;
 
       const platform = detectPlatform(input.url);
-      const media = await this.tryProviders(input.url, platform, primaryError);
-      const source = media?.videoUrls[0];
-      if (!source) throw primaryError;
-
-      this.logger.log(`Downloading ${input.url} directly via provider URL`);
-      await this.downloadDirect(input, source, media.headers);
+      for (const provider of this.providers) {
+        if (input.isCancelled?.()) throw new CancelledError();
+        if (!provider.supports(input.url, platform)) continue;
+        try {
+          const media = await provider.extract(input.url);
+          for (const source of media.videoUrls) {
+            if (input.isCancelled?.()) throw new CancelledError();
+            try {
+              await this.downloadDirect(input, source, media.headers);
+              this.logger.log(`Download completed via ${provider.name}`);
+              return;
+            } catch (error) {
+              if (error instanceof CancelledError || input.isCancelled?.()) throw error;
+              this.logger.warn(`Media transfer via ${provider.name} failed: ${errorText(error)}`);
+            }
+          }
+        } catch (error) {
+          if (error instanceof CancelledError || input.isCancelled?.()) throw error;
+          this.logger.warn(`Provider ${provider.name} failed: ${errorText(error)}`);
+        }
+      }
+      throw primaryError;
     }
   }
 
