@@ -13,7 +13,7 @@ import type { Attempt } from "../resilience";
  * YouTube player clients, in the order yt-dlp should try them.
  * `default` leads so nothing changes for videos that already work.
  */
-export const YOUTUBE_CLIENTS = "default,web_safari,mweb,tv_embedded,android_vr,android";
+export const YOUTUBE_CLIENTS = "default";
 
 const AUDIO_QUALITY_ARG: Record<AudioQuality, string> = {
   best: "0",
@@ -54,7 +54,7 @@ export function buildBaseArgs(ctx: YtdlpArgContext, playlist = false): string[] 
     "linear=1::2",
   ];
   if (ctx.verbose) args.push("-v");
-  if (ctx.jsRuntime) args.push("--js-runtimes", ctx.jsRuntime);
+  if (ctx.jsRuntime) args.push("--js-runtimes", ctx.jsRuntime, "--remote-components", "ejs:github");
   if (ctx.pluginDir) args.push("--plugin-dirs", "default", "--plugin-dirs", ctx.pluginDir);
   args.push("--extractor-args", `youtube:player_client=${YOUTUBE_CLIENTS}`);
   if (ctx.potBaseUrl) {
