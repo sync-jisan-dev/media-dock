@@ -59,6 +59,13 @@ fun HomeScreen(
             if (viewModel.validateUrl()) onNavigateToInspect(value)
         } else if (value.isNotBlank()) onBrowse(value)
     }
+    LaunchedEffect(input) {
+        if (com.mediadock.app.core.common.FormattingUtils.isValidUrl(input.trim())) {
+            kotlinx.coroutines.delay(350)
+            onNavigateToInspect(input.trim())
+            viewModel.clearUrl()
+        }
+    }
     LazyColumn(
         modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
