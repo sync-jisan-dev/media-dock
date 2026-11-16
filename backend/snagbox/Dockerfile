@@ -22,7 +22,7 @@ RUN apt-get update \
   && python3 -m pip install --no-cache-dir --break-system-packages gallery-dl==1.32.20 \
   && rm -rf /var/lib/apt/lists/*
 # Pinned yt-dlp. Node 22 (this image) is the JS runtime for YouTube's n challenge.
-ARG YTDLP_VERSION=2026.08.19
+ARG YTDLP_VERSION=2026.10.26
 ARG TARGETARCH
 RUN set -eu; \
   arch="${TARGETARCH:-}"; \
@@ -34,8 +34,8 @@ RUN set -eu; \
     esac; \
   fi; \
   case "$arch" in \
-    amd64) asset=yt-dlp_linux; sum=58162f9bfdc27458ea47bfcb311cf47028f17d8154a8bf7d689861d46399230a ;; \
-    arm64) asset=yt-dlp_linux_aarch64; sum=b16e4dab368a816cd05d477d698a605a6ae87ccee1c8ffd38fa21d7254141fcc ;; \
+    amd64) asset=yt-dlp_linux; sum=767ba9dce7052aa196f8b12652f433d76de128ba168966fa84b6394d5e6c6795 ;; \
+    arm64) asset=yt-dlp_linux_aarch64; sum=e87e9533e89fe5889abaa21f5114dfe7756d6aa6219b83551add04d48b18e483 ;; \
     *) echo "unsupported architecture: $arch" >&2; exit 1 ;; \
   esac; \
   curl -fsSL -o /usr/local/bin/yt-dlp \
@@ -70,7 +70,7 @@ ENV NODE_ENV=production \
   YTDLP_PATH=/usr/local/bin/yt-dlp \
   FFMPEG_PATH=/usr/bin/ffmpeg \
   GALLERY_DL_PATH=/usr/local/bin/gallery-dl \
-  YTDLP_VERSION=2026.08.19
+  YTDLP_VERSION=2026.10.26
 EXPOSE 7860
 # exec replaces the shell so node is PID 1 and receives SIGTERM on rollout.
 CMD ["sh", "-c", "./node_modules/.bin/prisma migrate deploy && exec node dist/main"]
