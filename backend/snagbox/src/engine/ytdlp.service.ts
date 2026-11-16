@@ -127,6 +127,7 @@ export class YtdlpService {
         return stdout;
       } catch (error) {
         lastError = rawErrorText(error);
+        this.logger.warn(`Metadata attempt ${i + 1}/${attempts.length} failed: ${briefError(lastError)}`);
         if (this.config.ytdlpVerbose) {
           this.logger.warn(`yt-dlp stderr (attempt ${i + 1}):\n${lastError.slice(-6000)}`);
         }

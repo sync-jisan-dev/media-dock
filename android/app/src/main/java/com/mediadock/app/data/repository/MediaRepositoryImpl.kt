@@ -93,6 +93,8 @@ class MediaRepositoryImpl @Inject constructor(
             val message = json.optString("message")
 
             when {
+                statusCode == 504 || message.contains("timed out", ignoreCase = true) ->
+                    "The server timed out while connecting to this platform. Please try again shortly."
                 code == "EXTRACTION_FAILED" || message.contains("Failed to extract", ignoreCase = true) || message.contains("yt-dlp", ignoreCase = true) ->
                     "MediaDock could not extract media from this link. The video may be restricted, private, age-gated, or unavailable."
                 code == "UNSUPPORTED_PLATFORM" || message.contains("not a supported platform", ignoreCase = true) ->
