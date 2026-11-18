@@ -67,7 +67,7 @@ fun MediaDockPillTabs(
 
 @Composable
 fun MediaDockDownloadAction(label: String, busy: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Button(
+    BrandButton(
         onClick = onClick,
         enabled = !busy,
         modifier = modifier.fillMaxWidth().height(54.dp).semantics { liveRegion = LiveRegionMode.Polite },

@@ -4,7 +4,7 @@ import com.mediadock.app.core.database.entity.HistoryEntity
 import com.mediadock.app.core.datastore.WorkspaceState
 
 object LibraryRules {
-    val sorts = listOf("Newest first", "Oldest first", "Title A–Z", "Largest first", "Smallest first")
+    val sorts = listOf("Newest first", "Oldest first", "Title Aâ€“Z", "Largest first", "Smallest first")
     fun title(file: HistoryEntity, state: WorkspaceState) = state.titles[file.id.toString()] ?: file.title
     fun select(files: List<HistoryEntity>, state: WorkspaceState, query: String = "", type: String = "ALL", favorites: Boolean = false, collection: String? = null): List<HistoryEntity> {
         val ids = state.collections.find { it.id == collection }?.fileIds
@@ -16,7 +16,7 @@ object LibraryRules {
         }
         return when (state.librarySort) {
             "Oldest first" -> filtered.sortedBy { it.downloadedAt }
-            "Title A–Z" -> filtered.sortedBy { title(it, state).lowercase(java.util.Locale.ROOT) }
+            "Title Aâ€“Z" -> filtered.sortedBy { title(it, state).lowercase(java.util.Locale.ROOT) }
             "Largest first" -> filtered.sortedByDescending { it.fileSizeBytes }
             "Smallest first" -> filtered.sortedBy { it.fileSizeBytes }
             else -> filtered.sortedByDescending { it.downloadedAt }

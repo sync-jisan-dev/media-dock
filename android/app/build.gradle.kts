@@ -14,8 +14,8 @@ android {
         applicationId = "com.mediadock.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 4
-        versionName = "1.1.0"
+        versionCode = 9
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -121,6 +121,8 @@ dependencies {
 
     // Coil Image Loading
     implementation("io.coil-kt:coil-compose:2.5.0")
+    implementation("io.coil-kt:coil-video:2.5.0")
+    implementation("io.coil-kt:coil-gif:2.5.0")
 
     // WorkManager Background Work
     implementation("androidx.work:work-runtime-ktx:2.9.0")

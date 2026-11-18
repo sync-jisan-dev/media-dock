@@ -1,0 +1,15 @@
+{
+  "name": "MediaDock",
+  "wordmark_viewbox": [
+    772,
+    176
+  ],
+  "font": "Inter Medium, outlined",
+  "palette": {
+    "sage_mint": "#D1F1D9",
+    "vibrant_mint": "#34D399",
+    "cosmic_violet": "#7C5CFC",
+    "forest_dark": "#0D3328",
+    "white": "#FFFFFF"
+  }
+}

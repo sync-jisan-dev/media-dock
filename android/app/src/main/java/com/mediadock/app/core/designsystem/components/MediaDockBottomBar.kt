@@ -19,10 +19,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.mediadock.app.core.designsystem.theme.*
 import com.mediadock.app.R
 
 enum class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVector) {
@@ -40,16 +42,19 @@ fun MediaDockBottomBar(
     activeDownloadsCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
+    val barColor = BrandDarkSurface
+    val borderColor = BrandDarkBorder
+
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
+        color = barColor,
         tonalElevation = 0.dp
     ) {
         Column {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = borderColor)
             NavigationBar(
                 modifier = Modifier.heightIn(min = 80.dp).padding(horizontal = 8.dp),
-                containerColor = MaterialTheme.colorScheme.surface,
+                containerColor = barColor,
                 contentColor = MaterialTheme.colorScheme.onSurface,
                 tonalElevation = 0.dp
             ) {
@@ -65,8 +70,8 @@ fun MediaDockBottomBar(
                             if (item == BottomNavItem.DOWNLOADS && activeDownloadsCount > 0) {
                                 BadgedBox(badge = {
                                     Badge(
-                                        containerColor = MaterialTheme.colorScheme.onSurface,
-                                        contentColor = MaterialTheme.colorScheme.surface
+                                        containerColor = BrandCoralOrange,
+                                        contentColor = BrandWhite
                                     ) {
                                         Text(if (activeDownloadsCount > 99) "99+" else activeDownloadsCount.toString())
                                     }
@@ -77,17 +82,17 @@ fun MediaDockBottomBar(
                             Text(
                                 stringResource(item.titleRes),
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                                 maxLines = 1
                             )
                         },
                         alwaysShowLabel = true,
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
-                            indicatorColor = MaterialTheme.colorScheme.primary,
-                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            selectedIconColor = BrandWhite,
+                            selectedTextColor = BrandCoralOrange,
+                            indicatorColor = BrandCoralOrange,
+                            unselectedIconColor = BrandTextSecondary,
+                            unselectedTextColor = BrandTextSecondary
                         )
                     )
                 }

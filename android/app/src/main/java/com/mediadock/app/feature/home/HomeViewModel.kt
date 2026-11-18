@@ -5,6 +5,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mediadock.app.core.common.FormattingUtils
+import com.mediadock.app.core.datastore.WorkspaceRules
 import com.mediadock.app.core.database.entity.HistoryEntity
 import com.mediadock.app.domain.usecase.GetHistoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,6 +29,29 @@ class HomeViewModel @Inject constructor(
 
     private val _errorMessage = MutableStateFlow<String?>(null)
     val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
+
+    val clipboardSuggestion = MutableStateFlow<String?>(null)
+    private var dismissedClipboard: String? = null
+
+    /** Called only while Home has window focus. No network request is made here. */
+    fun refreshClipboardSuggestion() {
+        val text = runCatching {
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()
+        }.getOrNull()
+        suggestClipboard(text)
+    }
+
+    fun suggestClipboard(text: String?) {
+        val candidate = text?.let { WorkspaceRules.extractLinks(it).firstOrNull() }
+        if (candidate != dismissedClipboard) dismissedClipboard = null
+        clipboardSuggestion.value = candidate?.takeUnless { it == dismissedClipboard }
+    }
+
+    fun dismissClipboardSuggestion() {
+        dismissedClipboard = clipboardSuggestion.value
+        clipboardSuggestion.value = null
+    }
 
     val recentDownloads: StateFlow<List<HistoryEntity>> = getHistoryUseCase()
         .map { list -> list.take(5) }

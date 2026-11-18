@@ -28,7 +28,7 @@ import javax.inject.Inject
             val started = System.nanoTime()
             connection.value = try {
                 val response = withTimeout(20000) { api.checkLiveness() }
-                if (response.isSuccessful && response.body()?.get("status") == "ok") "Connected · ${(System.nanoTime() - started) / 1000000} ms"
+                if (response.isSuccessful && response.body()?.get("status") == "ok") "Connected Â· ${(System.nanoTime() - started) / 1000000} ms"
                 else "Server responded with HTTP ${response.code()}. Try again shortly."
             } catch (_: TimeoutCancellationException) { "No response in 20 seconds. Free hosting may be waking up." }
             catch (e: CancellationException) { throw e }

@@ -18,6 +18,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
+import com.mediadock.app.core.designsystem.theme.*
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mediadock.app.core.common.FormattingUtils
@@ -103,7 +105,7 @@ import java.util.Date
         val file = details!!
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(LibraryRules.title(file, state), style = MaterialTheme.typography.titleSmall)
-            Text("${file.format.uppercase()} · ${FormattingUtils.formatBytes(file.fileSizeBytes)}")
+            Text("${file.format.uppercase()} Â· ${FormattingUtils.formatBytes(file.fileSizeBytes)}")
             Text(DateFormat.getDateTimeInstance().format(Date(file.downloadedAt)), style = MaterialTheme.typography.bodySmall)
             Text(file.sourceUrl, style = MaterialTheme.typography.bodySmall)
             Text(file.localUri, style = MaterialTheme.typography.bodySmall)
@@ -139,7 +141,7 @@ import java.util.Date
                     if (collectionId != null) TextButton(onClick = { val ids = selection; val currentCollection = collectionId; workspace.edit { it.copy(collections = it.collections.map { if (it.id == currentCollection) it.copy(fileIds = it.fileIds - ids) else it }) }; selection = emptySet() }, enabled = selection.isNotEmpty()) { Text("Remove from this collection") }
                 }
             } }
-            if (files.isEmpty()) item { Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceVariant) { Column(Modifier.fillMaxWidth().padding(24.dp)) { Icon(HugeIcons.VideoLibrary, null, Modifier.size(36.dp)); Spacer(Modifier.height(12.dp)); Text(if (allFiles.isEmpty()) "Your library starts here" else "No matching files", style = MaterialTheme.typography.titleMedium); Text(if (allFiles.isEmpty()) "Download media to see it in your collection." else "Try another filter, collection or search.", style = MaterialTheme.typography.bodySmall) } } }
+            if (files.isEmpty()) item { Surface(shape = RoundedCornerShape(16.dp), color = BrandDarkSurface, border = androidx.compose.foundation.BorderStroke(1.dp, BrandDarkBorder)) { Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) { Icon(HugeIcons.PlayCircle, null, Modifier.size(48.dp), tint = BrandCoralOrange); Spacer(Modifier.height(16.dp)); Text(if (allFiles.isEmpty()) "Your library starts here" else "No matching files", style = MaterialTheme.typography.titleMedium, color = BrandTextPrimary); Spacer(Modifier.height(4.dp)); Text(if (allFiles.isEmpty()) "Download media to see it in your collection." else "Try another filter, collection or search.", style = MaterialTheme.typography.bodySmall, color = BrandTextSecondary, textAlign = TextAlign.Center) } } }
             items(files.chunked(if (state.grid) 2 else 1), key = { it.first().id }) { row -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { file -> LibraryCard(file, LibraryRules.title(file, state), file.id in state.favorites, selectionMode, file.id in selection, state.grid, state.compact, Modifier.weight(1f),
                     onOpen = { if (selectionMode) selection = if (file.id in selection) selection - file.id else selection + file.id else open(file) },
@@ -164,11 +166,11 @@ import java.util.Date
     var menu by remember { mutableStateOf(false) }
     Surface(modifier.combinedClickable(onClick = onOpen, onLongClick = onLongClick), shape = RoundedCornerShape(18.dp), color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface) {
         Column(Modifier.padding(if (compact) 10.dp else 14.dp)) {
-            if (grid) { Icon(if (file.mediaType == "audio") HugeIcons.Headphones else HugeIcons.PlayCircle, null, Modifier.fillMaxWidth().height(if (compact) 44.dp else 72.dp).padding(8.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.height(8.dp)) }
+            if (grid) { MediaThumbnail(file.localUri, title, file.mediaType, Modifier.fillMaxWidth().aspectRatio(16f / 9f)); Spacer(Modifier.height(8.dp)) }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (selecting) Checkbox(selected, { onOpen() })
-                else if (!grid) { Icon(if (file.mediaType == "audio") HugeIcons.Headphones else HugeIcons.PlayCircle, null, Modifier.size(if (compact) 32.dp else 44.dp)); Spacer(Modifier.width(12.dp)) }
-                Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleSmall, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis); Text("${file.format.uppercase()} · ${FormattingUtils.formatBytes(file.fileSizeBytes)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                if (!grid) { MediaThumbnail(file.localUri, title, file.mediaType, Modifier.width(if (compact) 76.dp else 96.dp).height(if (compact) 48.dp else 60.dp)); Spacer(Modifier.width(12.dp)) }
+                Column(Modifier.weight(1f)) { Text(title, style = MaterialTheme.typography.titleSmall, maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis); Text("${file.format.uppercase()} Â· ${FormattingUtils.formatBytes(file.fileSizeBytes)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                 if (!grid && !compact) Text(DateFormat.getDateInstance(DateFormat.SHORT).format(Date(file.downloadedAt)), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

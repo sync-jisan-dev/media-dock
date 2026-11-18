@@ -73,6 +73,25 @@ fun DownloadsScreen(
     var status by remember { mutableStateOf("All") }
     val actionError by viewModel.actionError.collectAsState()
     val busy by viewModel.busy.collectAsState()
+    var waitingJob by remember { mutableStateOf<String?>(null) }
+    var shownJobs by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(arrayListOf<String>()) }
+    androidx.compose.runtime.LaunchedEffect(downloads) {
+        val next = downloads.firstOrNull { it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING) && it.jobId !in shownJobs }
+        if (waitingJob != null && downloads.none { it.jobId == waitingJob && it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING) }) waitingJob = null
+        if (next != null) {
+            shownJobs = ArrayList((shownJobs + downloads.map { it.jobId }).distinct())
+            if (waitingJob == null) waitingJob = next.jobId
+        }
+    }
+    val waitingDownload = downloads.find { it.jobId == waitingJob && it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING) }
+    if (waitingDownload != null) androidx.compose.ui.window.Dialog(onDismissRequest = { waitingJob = null }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+            Box {
+                com.mediadock.app.feature.media.MediaPreparationScreen(phase = if (waitingDownload.downloadedBytes > 0) "Saving your media" else "Preparing your download", sourceUrl = waitingDownload.sourceUrl, progress = waitingDownload.progress.takeIf { waitingDownload.downloadedBytes > 0 && waitingDownload.status == DownloadJobStatus.DOWNLOADING })
+                IconButton(onClick = { waitingJob = null }, Modifier.align(Alignment.TopEnd).padding(12.dp)) { Icon(HugeIcons.Close, "Close waiting screen") }
+            }
+        }
+    }
     val filtered = downloads.filter { (it.title.contains(search, true) || it.sourceUrl.contains(search, true)) && when (status) {
         "Running" -> it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING)
         "Paused" -> it.status == DownloadJobStatus.PAUSED
@@ -137,6 +156,9 @@ fun DownloadsScreen(
                 if (filtered.isEmpty()) Text("No downloads match this filter.", style = MaterialTheme.typography.bodyMedium)
             }
             items(filtered, key = { it.jobId }) { item ->
+                if (item.status in setOf(DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING)) {
+                    TextButton(onClick = { waitingJob = item.jobId }) { Icon(HugeIcons.PlayCircle, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Pass the time while we prepare") }
+                }
                 DownloadItemCard(
                     item = item,
                     onPause = { viewModel.pauseDownload(item.jobId) },
@@ -205,17 +227,8 @@ private fun DownloadItemCard(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (!item.thumbnail.isNullOrBlank()) {
-                    AsyncImage(
-                        model = item.thumbnail,
-                        contentDescription = item.title,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(62.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                }
+                com.mediadock.app.core.designsystem.components.MediaThumbnail(item.thumbnail ?: item.localUri, item.title, item.mediaType, Modifier.width(96.dp).height(60.dp))
+                Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.title,

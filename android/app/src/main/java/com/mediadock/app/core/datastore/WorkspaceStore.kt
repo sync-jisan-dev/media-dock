@@ -24,6 +24,11 @@ private val Context.workspaceData by preferencesDataStore("mediadock_workspace")
     val id: String = UUID.randomUUID().toString(), val name: String,
     val fileIds: Set<Long> = emptySet()
 )
+@Serializable data class BrowserTab(
+    val id: String = UUID.randomUUID().toString(), val url: String = "",
+    val title: String = "New tab", val desktop: Boolean = false,
+    val scrollY: Int = 0, val textZoom: Int = 100
+)
 @Serializable data class WorkspaceState(
     val links: List<SavedLink> = emptyList(),
     val recentPages: List<SavedLink> = emptyList(),
@@ -33,7 +38,9 @@ private val Context.workspaceData by preferencesDataStore("mediadock_workspace")
     val collections: List<MediaCollection> = emptyList(),
     val librarySort: String = "Newest first",
     val grid: Boolean = false,
-    val compact: Boolean = false
+    val compact: Boolean = false,
+    val browserTabs: List<BrowserTab> = emptyList(),
+    val activeBrowserTab: String? = null
 )
 
 object WorkspaceRules {

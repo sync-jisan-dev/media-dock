@@ -86,4 +86,25 @@ class MediaInspectViewModelTest {
         assertEquals("360p", model.selectedVideoQuality.value)
         assertEquals("mp3", model.selectedAudioFormat.value)
     }
+
+    @Test fun quickDownloadQueuesTheAvailableDefaultOnlyOnce() = runTest(dispatcher) {
+        coEvery { inspect(url) } returns Resource.Success(details.copy(videoQualities = listOf("360p"), videoFormats = listOf("mp4")))
+        coEvery { images(url) } returns Resource.Success(emptyList())
+        coEvery { create(any(), any(), any()) } returns Resource.Error("Fixture failure")
+        val handle = SavedStateHandle(mapOf("url" to url, "quick" to true))
+        val model = MediaInspectViewModel(handle, inspect, images, create, downloadImage, preferences)
+        advanceUntilIdle(); model.retry(); advanceUntilIdle()
+        coVerify(exactly = 1) { create(match { it.url == url && it.quality == "360p" && it.format == "mp4" }, any(), any()) }
+        assertEquals(true, handle.get<Boolean>("quickStarted"))
+        assertEquals("Fixture failure", model.downloadError.value)
+        coVerify(exactly = 0) { images(any()) }
+    }
+
+    @Test fun restoredQuickRequestDoesNotEnqueueAgain() = runTest(dispatcher) {
+        coEvery { inspect(url) } returns Resource.Success(details.copy(videoFormats = listOf("mp4")))
+        coEvery { images(url) } returns Resource.Success(emptyList())
+        MediaInspectViewModel(SavedStateHandle(mapOf("url" to url, "quick" to true, "quickStarted" to true)), inspect, images, create, downloadImage, preferences)
+        advanceUntilIdle()
+        coVerify(exactly = 0) { create(any(), any(), any()) }
+    }
 }

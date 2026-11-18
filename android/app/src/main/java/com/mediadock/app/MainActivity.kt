@@ -9,6 +9,12 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.mediadock.app.feature.browser.browserPageColor
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -20,7 +26,6 @@ import androidx.navigation.compose.rememberNavController
 import com.mediadock.app.core.datastore.PreferencesDataStore
 import com.mediadock.app.core.datastore.ThemeMode
 import com.mediadock.app.core.designsystem.components.MediaDockBottomBar
-import com.mediadock.app.core.designsystem.components.MediaDockTopBar
 import com.mediadock.app.core.designsystem.theme.MediaDockTheme
 import com.mediadock.app.domain.usecase.GetActiveDownloadsUseCase
 import com.mediadock.app.feature.navigation.MediaDockNavHost
@@ -64,28 +69,17 @@ class MainActivity : ComponentActivity() {
 
                 LaunchedEffect(sharedUrl) { if (!sharedUrl.isNullOrBlank()) navController.navigateToTopLevel(Screen.Home.route) }
                 val isRootScreen = currentRoute in topLevelRoutes
-
-                val screenTitle = when (currentRoute) {
-                    Screen.Home.route -> "MediaDock"
-                    Screen.Downloads.route -> "Downloads"
-                    Screen.History.route -> "My files"
-                    Screen.Settings.route -> "My MediaDock"
-                    Screen.Explore.route -> "Browse"
-                    Screen.SavedLinks.route -> "Saved links"
-                    else -> "Download media"
+                val pageColor = if (currentRoute == Screen.Home.route || currentRoute == Screen.Explore.route || currentRoute == Screen.Browser.route) browserPageColor() else androidx.compose.material3.MaterialTheme.colorScheme.background
+                val view = LocalView.current
+                SideEffect {
+                    window.statusBarColor = pageColor.toArgb()
+                    WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = pageColor.luminance() > .5f
                 }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
-                    containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+                    containerColor = pageColor,
                     contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
-                    topBar = {
-                        MediaDockTopBar(
-                            title = screenTitle,
-                            canNavigateBack = !isRootScreen,
-                            onNavigateBack = { navController.popBackStack() }
-                        )
-                    },
                     bottomBar = {
                         if (isRootScreen) {
                             MediaDockBottomBar(

@@ -1,15 +1,17 @@
 package com.mediadock.app.core.designsystem.components
 
+import com.mediadock.app.core.designsystem.theme.*
 import com.mediadock.app.core.designsystem.icons.HugeIcons
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import com.mediadock.app.R
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -19,7 +21,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -31,34 +33,26 @@ fun MediaDockTopBar(
     onNavigateBack: () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < .5f
     TopAppBar(
         modifier = modifier,
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            if (title == "MediaDock" && !canNavigateBack) {
+                Image(
+                    painterResource(if (isDark) R.drawable.mediadock_wordmark_light else R.drawable.mediadock_wordmark_dark),
+                    contentDescription = "MediaDock",
+                    modifier = Modifier.width(176.dp).height(40.dp)
+                )
+            } else Row(verticalAlignment = Alignment.CenterVertically) {
                 if (!canNavigateBack) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .background(
-                                Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary)),
-                                RoundedCornerShape(12.dp)
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = HugeIcons.PlayArrow,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(23.dp)
-                        )
-                    }
+                    Image(
+                        painterResource(if (isDark) R.drawable.mediadock_mark_light else R.drawable.mediadock_mark_dark),
+                        contentDescription = null,
+                        modifier = Modifier.size(32.dp)
+                    )
                     Spacer(Modifier.width(12.dp))
                 }
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
         },
         navigationIcon = {
@@ -70,11 +64,11 @@ fun MediaDockTopBar(
         },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-            scrolledContainerColor = MaterialTheme.colorScheme.surface,
-            titleContentColor = MaterialTheme.colorScheme.onBackground,
-            navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-            actionIconContentColor = MaterialTheme.colorScheme.onBackground
+            containerColor = BrandDarkCanvas,
+            scrolledContainerColor = BrandDarkSurface,
+            titleContentColor = BrandTextPrimary,
+            navigationIconContentColor = BrandTextPrimary,
+            actionIconContentColor = BrandTextPrimary
         )
     )
 }

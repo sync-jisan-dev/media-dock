@@ -1,5 +1,7 @@
 package com.mediadock.app.feature.workspace
 
+import com.mediadock.app.core.designsystem.components.BrandButton
+
 import android.content.ClipboardManager
 import android.content.Context
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -11,15 +13,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.mediadock.app.core.common.MediaActions
 import com.mediadock.app.core.datastore.*
 import com.mediadock.app.core.designsystem.components.*
 import com.mediadock.app.core.designsystem.icons.HugeIcons
+import com.mediadock.app.core.designsystem.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,7 +60,7 @@ import kotlinx.serialization.encodeToString
     if (addDialog) AlertDialog(onDismissRequest = { addDialog = false }, title = { Text("Save links for later") }, text = {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Paste one link or several. Duplicate links are skipped.", style = MaterialTheme.typography.bodySmall)
-            OutlinedTextField(text, { text = it.take(50000) }, Modifier.fillMaxWidth(), minLines = 4, maxLines = 8, placeholder = { Text("https://…") })
+            OutlinedTextField(text, { text = it.take(50000) }, Modifier.fillMaxWidth(), minLines = 4, maxLines = 8, placeholder = { Text("https://â€¦") })
             Text("${WorkspaceRules.extractLinks(text).size} valid links", style = MaterialTheme.typography.labelMedium)
             TextButton(onClick = {
                 val clip = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).primaryClip
@@ -68,9 +73,9 @@ import kotlinx.serialization.encodeToString
     val links = (if (recent) state.recentPages else state.links.sortedByDescending { it.pinned })
         .filter { it.title.contains(query, true) || it.url.contains(query, true) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { SectionHeading("A place for every link", "Save now. Download when you’re ready.") }
+        item { SectionHeading("A place for every link", "Save now. Download when youâ€™re ready.") }
         item { Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { StatTile(state.links.size.toString(), "Saved links", Modifier.weight(1f)); StatTile(state.recentPages.size.toString(), "Recent pages", Modifier.weight(1f)) } }
-        item { Button(onClick = { addDialog = true }, Modifier.fillMaxWidth().height(48.dp)) { Icon(HugeIcons.ContentPaste, null); Spacer(Modifier.width(8.dp)); Text("Add links") } }
+        item { BrandButton(onClick = { addDialog = true }, Modifier.fillMaxWidth().height(48.dp)) { Icon(HugeIcons.ContentPaste, null); Spacer(Modifier.width(8.dp)); Text("Add links") } }
         item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { export.launch("MediaDock-links.json") }, Modifier.weight(1f)) { Text("Export JSON") }
             OutlinedButton(onClick = { import.launch(arrayOf("application/json", "text/plain")) }, Modifier.weight(1f)) { Text("Import JSON") }
@@ -78,7 +83,7 @@ import kotlinx.serialization.encodeToString
         item { MediaDockPillTabs(listOf("Saved", "Recent"), if (recent) 1 else 0, { recent = it == 1 }) }
         item { OutlinedTextField(query, { query = it }, Modifier.fillMaxWidth(), placeholder = { Text("Search titles or links") }, leadingIcon = { Icon(HugeIcons.Search, null) }, singleLine = true, shape = RoundedCornerShape(16.dp)) }
         if (recent && state.recentPages.isNotEmpty()) item { TextButton(onClick = { clearRecent = true }) { Text("Clear recent pages") } }
-        if (links.isEmpty()) item { Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surfaceVariant) { Column(Modifier.fillMaxWidth().padding(24.dp)) { Icon(HugeIcons.FolderOpen, null, Modifier.size(32.dp)); Spacer(Modifier.height(12.dp)); Text(if (query.isBlank()) "Your next discovery starts here" else "No matching links", style = MaterialTheme.typography.titleMedium); Text(if (recent) "Pages you visit in Browse will appear here." else "Tap Add links or bookmark a page in Browse.", style = MaterialTheme.typography.bodySmall) } } }
+        if (links.isEmpty()) item { Surface(shape = RoundedCornerShape(16.dp), color = BrandDarkSurface, border = androidx.compose.foundation.BorderStroke(1.dp, BrandDarkBorder)) { Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) { Icon(HugeIcons.FolderOpen, null, Modifier.size(48.dp), tint = BrandCoralOrange); Spacer(Modifier.height(16.dp)); Text(if (query.isBlank()) "Your next discovery starts here" else "No matching links", style = MaterialTheme.typography.titleMedium, color = BrandTextPrimary); Spacer(Modifier.height(4.dp)); Text(if (recent) "Pages you visit in Browse will appear here." else "Tap Add links or bookmark a page in Browse.", style = MaterialTheme.typography.bodySmall, color = BrandTextSecondary, textAlign = TextAlign.Center) } } }
         items(links, key = { it.url }) { link ->
             var menu by remember { mutableStateOf(false) }
             Card(shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
@@ -101,7 +106,7 @@ import kotlinx.serialization.encodeToString
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         FilledTonalButton(onClick = { onBrowse(link.url) }, Modifier.weight(1f)) { Text("Browse") }
-                        Button(onClick = { onDownload(link.url) }, Modifier.weight(1f)) { Icon(HugeIcons.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Download") }
+                        BrandButton(onClick = { onDownload(link.url) }, Modifier.weight(1f)) { Icon(HugeIcons.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Download") }
                     }
                 }
             }

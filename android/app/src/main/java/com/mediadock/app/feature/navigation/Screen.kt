@@ -14,10 +14,10 @@ sealed class Screen(val route: String) {
     data object History : Screen("history")
     data object Settings : Screen("settings")
 
-    data object MediaInspect : Screen("media_inspect/{url}") {
-        fun createRoute(url: String): String {
+    data object MediaInspect : Screen("media_inspect/{url}?quick={quick}") {
+        fun createRoute(url: String, quick: Boolean = false): String {
             val encoded = URLEncoder.encode(url, StandardCharsets.UTF_8.toString())
-            return "media_inspect/$encoded"
+            return "media_inspect/$encoded?quick=$quick"
         }
     }
 }

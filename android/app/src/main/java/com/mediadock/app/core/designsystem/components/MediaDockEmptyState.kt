@@ -1,5 +1,7 @@
 package com.mediadock.app.core.designsystem.components
 
+import com.mediadock.app.core.designsystem.theme.*
+
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.heightIn
@@ -75,7 +77,6 @@ fun MediaDockEmptyState(
 
     androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxSize()) {
         val viewportHeight = maxHeight
-        val showIllustration = viewportHeight >= 300.dp
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -85,33 +86,32 @@ fun MediaDockEmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            if (showIllustration) {
-                Image(
-                    painter = painterResource(R.drawable.media_dock_hero),
-                    contentDescription = null,
-                    colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }),
-                    modifier = Modifier.size(112.dp).clip(RoundedCornerShape(20.dp))
-                )
-            } else {
-                Icon(icon, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(BrandCoralOrange.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, Modifier.size(40.dp), tint = BrandCoralOrange)
             }
             Spacer(Modifier.height(16.dp))
             Text(
                 title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 cleanMessage,
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             if (!actionLabel.isNullOrBlank()) {
                 Spacer(Modifier.height(20.dp))
-                Button(
+                BrandButton(
                     onClick = onActionClick,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                     shape = RoundedCornerShape(14.dp)

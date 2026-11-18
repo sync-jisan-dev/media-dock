@@ -30,7 +30,7 @@ enum class InspectTab {
 
 @HiltViewModel
 class MediaInspectViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val inspectMediaUseCase: InspectMediaUseCase,
     private val extractImagesUseCase: ExtractImagesUseCase,
     private val createDownloadUseCase: CreateDownloadUseCase,
@@ -41,6 +41,9 @@ class MediaInspectViewModel @Inject constructor(
     // Navigation has already decoded the route argument. Decoding again corrupts
     // literal plus signs and percent-encoded data in signed media URLs.
     private val rawUrl: String = savedStateHandle.get<String>("url").orEmpty()
+    val sourceUrl: String get() = rawUrl
+    val quickDownload: Boolean = savedStateHandle.get<Boolean>("quick") ?: false
+    val quickPreparing = MutableStateFlow(quickDownload && savedStateHandle.get<Boolean>("quickStarted") != true)
 
     val isSubmitting = MutableStateFlow(false)
     val downloadError = MutableStateFlow<String?>(null)
@@ -114,7 +117,7 @@ class MediaInspectViewModel @Inject constructor(
             _extractedImagesState.value = Resource.Loading
 
             val inspectDeferred = async { inspectMediaUseCase(url) }
-            val imagesDeferred = async { extractImagesUseCase(url) }
+            val imagesDeferred = if (!quickDownload) async { extractImagesUseCase(url) } else null
 
             val mediaRes = inspectDeferred.await()
             _mediaDetailsState.value = mediaRes
@@ -127,8 +130,20 @@ class MediaInspectViewModel @Inject constructor(
                 selectedAudioQuality.value = details.audioQualities.firstOrNull() ?: "best"
                 selectedAudioFormat.value = details.audioFormats.firstOrNull { it == prefs.defaultAudioFormat } ?: details.audioFormats.firstOrNull() ?: "mp3"
                 gifEndTime.value = (details.durationSeconds ?: 10L).coerceAtMost(15L)
+                if (quickDownload && savedStateHandle.get<Boolean>("quickStarted") != true) {
+                    savedStateHandle["quickStarted"] = true
+                    when {
+                        details.videoFormats.isNotEmpty() -> downloadVideo(details)
+                        details.audioFormats.isNotEmpty() -> downloadAudio(details)
+                        else -> quickPreparing.value = false
+                    }
+                }
+            } else {
+                quickPreparing.value = false
             }
-            _extractedImagesState.value = imagesDeferred.await()
+            _extractedImagesState.value = if (imagesDeferred != null) imagesDeferred.await()
+                else if (mediaRes is Resource.Success && (mediaRes.data.videoFormats.isNotEmpty() || mediaRes.data.audioFormats.isNotEmpty())) Resource.Success(emptyList())
+                else extractImagesUseCase(url)
         }
     }
 
@@ -202,7 +217,7 @@ class MediaInspectViewModel @Inject constructor(
         try {
             when (val result = createDownloadUseCase(request, title, thumbnail)) {
                 is Resource.Success -> _navigationEvent.emit("downloads")
-                is Resource.Error -> downloadError.value = result.message
+                is Resource.Error -> { downloadError.value = result.message; quickPreparing.value = false }
                 else -> Unit
             }
         } finally { isSubmitting.value = false }

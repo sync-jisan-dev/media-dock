@@ -64,6 +64,7 @@ fun MediaDockNavHost(
                     else navController.navigate(Screen.Browser.createRoute(query))
                 },
                 onSavedLinks = { navController.navigate(Screen.SavedLinks.route) },
+                onQuickDownload = { navController.navigate(Screen.MediaInspect.createRoute(it, quick = true)) },
                 onLibrary = { navController.navigateToTopLevel(Screen.History.route) },
                 onNavigateToInspect = { url ->
                     navController.navigate(Screen.MediaInspect.createRoute(url))
@@ -81,7 +82,8 @@ fun MediaDockNavHost(
         composable(
             route = Screen.MediaInspect.route,
             arguments = listOf(
-                navArgument("url") { type = NavType.StringType }
+                navArgument("url") { type = NavType.StringType },
+                navArgument("quick") { type = NavType.BoolType; defaultValue = false }
             )
         ) {
             val inspectViewModel: MediaInspectViewModel = hiltViewModel()

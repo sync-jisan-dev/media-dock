@@ -39,10 +39,10 @@ private val LightColorScheme = lightColorScheme(
     onSurfaceVariant = md_theme_light_onSurfaceVariant,
     outline = md_theme_light_outline,
     outlineVariant = DockPaperBorder,
-    inversePrimary = androidx.compose.ui.graphics.Color.White,
-    inverseSurface = DockInk,
-    inverseOnSurface = androidx.compose.ui.graphics.Color.White,
-    surfaceTint = md_theme_light_primary,
+    inversePrimary = BrandCoralOrange,
+    inverseSurface = BrandDarkSurface,
+    inverseOnSurface = BrandWhite,
+    surfaceTint = androidx.compose.ui.graphics.Color.Transparent,
     scrim = androidx.compose.ui.graphics.Color.Black
 )
 
@@ -71,19 +71,19 @@ private val DarkColorScheme = darkColorScheme(
     onSurfaceVariant = md_theme_dark_onSurfaceVariant,
     outline = md_theme_dark_outline,
     outlineVariant = HairlineSubtle,
-    inversePrimary = androidx.compose.ui.graphics.Color.Black,
-    inverseSurface = androidx.compose.ui.graphics.Color.White,
-    inverseOnSurface = DockInk,
-    surfaceTint = md_theme_dark_primary,
+    inversePrimary = BrandCoralOrange,
+    inverseSurface = BrandDarkSurface,
+    inverseOnSurface = BrandWhite,
+    surfaceTint = androidx.compose.ui.graphics.Color.Transparent,
     scrim = androidx.compose.ui.graphics.Color.Black
 )
 
 private val MediaDockShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),
     small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(18.dp),
-    large = RoundedCornerShape(24.dp),
-    extraLarge = RoundedCornerShape(30.dp)
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(26.dp)
 )
 
 @Composable
@@ -97,10 +97,10 @@ fun MediaDockTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.surface.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb()
             window.navigationBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
         }
     }
 

@@ -1,5 +1,7 @@
 package com.mediadock.app.feature.media
 
+import com.mediadock.app.core.designsystem.components.BrandButton
+
 import com.mediadock.app.core.designsystem.icons.HugeIcons
 
 import androidx.compose.animation.AnimatedVisibility
@@ -86,6 +88,7 @@ fun MediaInspectScreen(
     val imagesResource by viewModel.extractedImagesState.collectAsState()
     val selectedTab by viewModel.selectedTab.collectAsState()
     val submitting by viewModel.isSubmitting.collectAsState()
+    val quickPreparing by viewModel.quickPreparing.collectAsState()
     val downloadError by viewModel.downloadError.collectAsState()
     val snackbar = androidx.compose.runtime.remember { androidx.compose.material3.SnackbarHostState() }
     LaunchedEffect(downloadError) {
@@ -101,11 +104,11 @@ fun MediaInspectScreen(
     Box(modifier.fillMaxSize()) {
         when (val resource = mediaResource) {
             is Resource.Loading -> {
-                MediaDockLoadingIndicator(message = "Connecting and finding your media…\nA free server may take a minute to wake up.")
+                MediaPreparationScreen(sourceUrl = viewModel.sourceUrl)
             }
             is Resource.Error -> {
                 if (imagesResource is Resource.Loading) {
-                    MediaDockLoadingIndicator(message = "Looking for images on this page…")
+                    MediaPreparationScreen(phase = "Looking for images", sourceUrl = viewModel.sourceUrl)
                 } else if (imagesResource is Resource.Success && (imagesResource as Resource.Success<List<ExtractedImage>>).data.isNotEmpty()) {
                     val images = (imagesResource as Resource.Success<List<ExtractedImage>>).data
                     ImagesOnlyView(
@@ -168,7 +171,9 @@ fun MediaInspectScreen(
             }
             is Resource.Idle -> {}
         }
-    if (submitting) {
+    if ((submitting || quickPreparing) && viewModel.quickDownload && mediaResource is Resource.Success) {
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MediaPreparationScreen(phase = "Starting your download", sourceUrl = viewModel.sourceUrl) }
+    } else if (submitting) {
         androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth())
     }
     androidx.compose.material3.SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter).padding(16.dp))
@@ -317,7 +322,7 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            Button(
+            BrandButton(
                 onClick = { viewModel.downloadVideo(details) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -416,7 +421,7 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            Button(
+            BrandButton(
                 onClick = { viewModel.downloadAudio(details) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -494,7 +499,7 @@ private fun GifTabContent(details: MediaDetails, viewModel: MediaInspectViewMode
 
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            Button(
+            BrandButton(
                 onClick = { viewModel.downloadGif(details) },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -619,7 +624,7 @@ private fun ImagesGridView(
                 tonalElevation = 6.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Button(
+                BrandButton(
                     onClick = { viewModel.downloadSelectedImages(images) },
                     modifier = Modifier
                         .fillMaxWidth()
