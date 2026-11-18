@@ -131,7 +131,7 @@ fun DownloadsScreen(
                     Text(
                         text = "${downloads.size} Active Downloads",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Normal,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -233,7 +233,7 @@ private fun DownloadItemCard(
                     Text(
                         text = item.title,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.Normal,
                         maxLines = 1
                     )
                     Spacer(modifier = Modifier.height(3.dp))
@@ -248,7 +248,7 @@ private fun DownloadItemCard(
                             Text(
                                 text = item.mediaType.uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
+                                fontWeight = FontWeight.Normal,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
@@ -256,7 +256,7 @@ private fun DownloadItemCard(
                         Text(
                             text = item.format.uppercase(),
                             style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Normal,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         if (item.fileSizeBytes > 0) {

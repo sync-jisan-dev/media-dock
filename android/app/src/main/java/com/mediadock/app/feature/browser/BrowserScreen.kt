@@ -250,7 +250,7 @@ import com.mediadock.app.feature.workspace.WorkspaceViewModel
                     }
                     item {
                         Spacer(Modifier.height(16.dp))
-                        Text("Your space to explore.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = CpdColor.textPrimary)
+                        Text("Your space to explore.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Light, color = CpdColor.textPrimary)
                         Spacer(Modifier.height(6.dp))
                         Text("Search anything or visit a website.", style = MaterialTheme.typography.bodyMedium, color = CpdColor.textSecondary)
                         Spacer(Modifier.height(24.dp))

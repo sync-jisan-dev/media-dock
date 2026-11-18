@@ -82,7 +82,7 @@ fun MediaDockBottomBar(
                             Text(
                                 stringResource(item.titleRes),
                                 style = MaterialTheme.typography.labelSmall,
-                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                fontWeight = if (selected) FontWeight.Medium else FontWeight.Light,
                                 maxLines = 1
                             )
                         },

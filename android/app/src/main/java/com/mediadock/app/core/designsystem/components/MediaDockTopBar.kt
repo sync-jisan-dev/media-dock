@@ -52,7 +52,7 @@ fun MediaDockTopBar(
                     )
                     Spacer(Modifier.width(12.dp))
                 }
-                Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Normal)
             }
         },
         navigationIcon = {

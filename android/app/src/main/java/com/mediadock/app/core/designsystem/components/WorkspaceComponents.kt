@@ -25,7 +25,7 @@ import com.mediadock.app.core.designsystem.theme.*
             horizontalArrangement = Arrangement.spacedBy(CpdSpace.space3x)
         ) {
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = CpdColor.textPrimary)
+                Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Normal, color = CpdColor.textPrimary)
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = CpdColor.textSecondary)
             }
             action?.invoke()

@@ -98,9 +98,9 @@ import com.mediadock.app.domain.model.PlatformRegistry
                     isDark = CpdColor.isDark,
                     interactive = true
                 )
-                // Wordmark tinted with MediaDock signature coral-orange brand color
+                // Wordmark in MediaDock signature coral-orange brand color
                 Image(
-                    painter = painterResource(if (CpdColor.isDark) R.drawable.mediadock_wordmark_light else R.drawable.mediadock_wordmark_dark),
+                    painter = painterResource(if (CpdColor.isDark) R.drawable.mediadock_wordmark_dark else R.drawable.mediadock_wordmark_light),
                     contentDescription = "MediaDock",
                     colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(CpdColor.CoralRest),
                     modifier = Modifier
@@ -170,7 +170,7 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 ) {
                     Icon(HugeIcons.Download, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(CpdSpace.space2x))
-                    Text("Find media or search", fontWeight = FontWeight.SemiBold)
+                    Text("Find media or search", fontWeight = FontWeight.Normal)
                 }
             }
 
@@ -215,7 +215,7 @@ import com.mediadock.app.domain.model.PlatformRegistry
                                 ) {
                                     Icon(HugeIcons.Download, null, Modifier.size(18.dp))
                                     Spacer(Modifier.width(CpdSpace.space2x))
-                                    Text("Download this link", fontWeight = FontWeight.SemiBold)
+                                    Text("Download this link", fontWeight = FontWeight.Normal)
                                 }
                             }
                         }
