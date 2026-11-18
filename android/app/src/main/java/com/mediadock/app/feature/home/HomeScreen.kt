@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.mediadock.app.R
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -14,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.core.designsystem.components.BrandButton
+import com.mediadock.app.core.designsystem.components.CompoundSecondaryButton
 import com.mediadock.app.core.designsystem.icons.HugeIcons
 import com.mediadock.app.core.designsystem.theme.*
 import com.mediadock.app.domain.model.PlatformRegistry
@@ -66,66 +67,197 @@ import com.mediadock.app.domain.model.PlatformRegistry
     onDismissSuggestion: () -> Unit, onBrowse: (String) -> Unit,
     onSavedLinks: () -> Unit, onLibrary: () -> Unit, modifier: Modifier = Modifier
 ) {
-    BoxWithConstraints(modifier.fillMaxSize().background(BrandDarkCanvas)) {
+    BoxWithConstraints(modifier.fillMaxSize().background(CpdColor.bgCanvasDefault)) {
         val contentHeight = maxHeight
-        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = contentHeight).padding(horizontal = 24.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = contentHeight)
+                .padding(horizontal = CpdSpace.space6x, vertical = CpdSpace.space5x),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Header Wordmark Logo
             Image(
                 painterResource(R.drawable.mediadock_wordmark_light),
                 contentDescription = "MediaDock",
                 modifier = Modifier.width(240.dp).height(52.dp)
             )
-            Spacer(Modifier.height(32.dp))
-            OutlinedTextField(input, onInput, Modifier.fillMaxWidth(), singleLine = true,
-                placeholder = { Text("Search or paste a link", style = MaterialTheme.typography.bodyMedium, color = BrandTextMuted) },
-                leadingIcon = { Icon(HugeIcons.Search, null, tint = BrandTextSecondary) },
-                trailingIcon = { IconButton(onClick = onPaste) { Icon(HugeIcons.ContentPaste, "Paste link", tint = BrandCoralOrange) } },
-                shape = RoundedCornerShape(16.dp),
+
+            Spacer(Modifier.height(CpdSpace.space8x))
+
+            // Search / Paste Input styled with Compound Tokens
+            OutlinedTextField(
+                value = input,
+                onValueChange = onInput,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(CpdSpace.space14x),
+                singleLine = true,
+                placeholder = {
+                    Text(
+                        "Search or paste a media link",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = CpdColor.textDisabled
+                    )
+                },
+                leadingIcon = {
+                    Icon(HugeIcons.Search, contentDescription = null, tint = CpdColor.textSecondary)
+                },
+                trailingIcon = {
+                    IconButton(onClick = onPaste) {
+                        Icon(HugeIcons.ContentPaste, contentDescription = "Paste link", tint = CpdColor.CoralRest)
+                    }
+                },
+                shape = RoundedCornerShape(CpdRadius.radiusXl),
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = BrandDarkSurface,
-                    focusedContainerColor = BrandDarkSurface,
-                    unfocusedBorderColor = BrandDarkBorder,
-                    focusedBorderColor = BrandCoralOrange,
-                    focusedTextColor = BrandTextPrimary,
-                    unfocusedTextColor = BrandTextPrimary,
-                    cursorColor = BrandCoralOrange
+                    unfocusedContainerColor = CpdColor.bgSubtleSecondary,
+                    focusedContainerColor = CpdColor.bgSubtleSecondary,
+                    unfocusedBorderColor = CpdColor.borderInteractiveSecondary,
+                    focusedBorderColor = CpdColor.borderFocused,
+                    focusedTextColor = CpdColor.textPrimary,
+                    unfocusedTextColor = CpdColor.textPrimary,
+                    cursorColor = CpdColor.CoralRest
                 ),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch() }))
-            if (error != null) Text(error, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-            if (input.isNotBlank()) BrandButton(onClick = onSearch, Modifier.fillMaxWidth().padding(top = 12.dp)) { Text("Find media or search", fontWeight = FontWeight.Bold) }
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { onSearch() })
+            )
+
+            if (error != null) {
+                Text(
+                    error,
+                    Modifier.padding(top = CpdSpace.space2x),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            // Compound Tier 1 Action Button (The Premium CTA)
+            if (input.isNotBlank()) {
+                BrandButton(
+                    onClick = onSearch,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = CpdSpace.space3x)
+                        .height(CpdSpace.space13x)
+                ) {
+                    Icon(HugeIcons.Download, null, Modifier.size(20.dp))
+                    Spacer(Modifier.width(CpdSpace.space2x))
+                    Text("Find media or search", fontWeight = FontWeight.SemiBold)
+                }
+            }
+
+            // Copied Link Suggestion Card
             if (suggestion != null) {
-                Spacer(Modifier.height(16.dp))
-                Surface(shape = RoundedCornerShape(16.dp), color = BrandDarkSurface, border = androidx.compose.foundation.BorderStroke(1.dp, BrandDarkBorder)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Spacer(Modifier.height(CpdSpace.space4x))
+                Surface(
+                    shape = RoundedCornerShape(CpdRadius.radiusXl),
+                    color = CpdColor.bgSubtleSecondary,
+                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary)
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(CpdSpace.space4x)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(HugeIcons.ContentPaste, null, Modifier.size(20.dp), tint = BrandCoralOrange)
-                            Text("Is this the link you copied?", Modifier.weight(1f).padding(start = 8.dp), style = MaterialTheme.typography.titleSmall, color = BrandTextPrimary)
-                            IconButton(onClick = onDismissSuggestion, Modifier.size(32.dp)) { Icon(HugeIcons.Close, "Dismiss copied link", Modifier.size(18.dp), tint = BrandTextSecondary) }
+                            Icon(HugeIcons.ContentPaste, null, Modifier.size(20.dp), tint = CpdColor.CoralRest)
+                            Text(
+                                "Is this the link you copied?",
+                                Modifier.weight(1f).padding(start = CpdSpace.space2x),
+                                style = MaterialTheme.typography.titleSmall,
+                                color = CpdColor.textPrimary
+                            )
+                            IconButton(onClick = onDismissSuggestion, Modifier.size(32.dp)) {
+                                Icon(HugeIcons.Close, "Dismiss copied link", Modifier.size(18.dp), tint = CpdColor.textSecondary)
+                            }
                         }
-                        Text(suggestion, Modifier.padding(top = 6.dp, bottom = 12.dp), maxLines = 2, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall, color = BrandTextSecondary)
-                        BrandButton(onClick = { onSuggestion(suggestion) }, Modifier.fillMaxWidth()) { Icon(HugeIcons.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Download this link", fontWeight = FontWeight.Bold) }
+                        Text(
+                            suggestion,
+                            Modifier.padding(top = CpdSpace.space15x, bottom = CpdSpace.space3x),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CpdColor.textSecondary
+                        )
+                        BrandButton(
+                            onClick = { onSuggestion(suggestion) },
+                            modifier = Modifier.fillMaxWidth().height(CpdSpace.space13x)
+                        ) {
+                            Icon(HugeIcons.Download, null, Modifier.size(18.dp))
+                            Spacer(Modifier.width(CpdSpace.space2x))
+                            Text("Download this link", fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
-            Spacer(Modifier.height(30.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Text("Favorite platforms", style = MaterialTheme.typography.titleSmall, color = BrandTextPrimary)
-                TextButton(onClick = { onBrowse("") }) { Text("See all", color = BrandCoralOrange) }
-            }
-            PlatformRegistry.platforms.take(8).chunked(4).forEach { row ->
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { platform -> Column(Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).clickable { onBrowse("https://${platform.domains.first()}") }.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                        PlatformIcon(platform.id)
-                        Spacer(Modifier.height(8.dp))
-                        Text(platform.name, style = MaterialTheme.typography.labelSmall, color = BrandTextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    } }
+
+            Spacer(Modifier.height(CpdSpace.space6x))
+
+            // Platform Directory Section
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Favorite platforms", style = MaterialTheme.typography.titleSmall, color = CpdColor.textPrimary)
+                TextButton(onClick = { onBrowse("") }) {
+                    Text("See all", color = CpdColor.CoralRest)
                 }
             }
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextButton(onClick = onSavedLinks) { Icon(HugeIcons.FolderOpen, null, Modifier.size(18.dp), tint = BrandCoralOrange); Spacer(Modifier.width(6.dp)); Text("Saved links", color = BrandTextPrimary) }
-                TextButton(onClick = onLibrary) { Icon(HugeIcons.PlayCircle, null, Modifier.size(18.dp), tint = BrandCoralOrange); Spacer(Modifier.width(6.dp)); Text("My collection", color = BrandTextPrimary) }
+
+            PlatformRegistry.platforms.take(8).chunked(4).forEach { row ->
+                Row(
+                    Modifier.fillMaxWidth().padding(vertical = CpdSpace.space1x),
+                    horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
+                ) {
+                    row.forEach { platform ->
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(CpdRadius.radiusLg))
+                                .background(CpdColor.bgSubtleSecondary)
+                                .border(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary, RoundedCornerShape(CpdRadius.radiusLg))
+                                .clickable { onBrowse("https://${platform.domains.first()}") }
+                                .padding(vertical = CpdSpace.space3x),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            PlatformIcon(platform.id)
+                            Spacer(Modifier.height(CpdSpace.space15x))
+                            Text(
+                                platform.name,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = CpdColor.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(CpdSpace.space5x))
+
+            // Secondary Shortcut Actions (Compound Secondary Tier)
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(CpdSpace.space3x)
+            ) {
+                CompoundSecondaryButton(
+                    onClick = onSavedLinks,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(HugeIcons.FolderOpen, null, Modifier.size(18.dp), tint = CpdColor.CoralRest)
+                    Spacer(Modifier.width(CpdSpace.space15x))
+                    Text("Saved links", color = CpdColor.textPrimary)
+                }
+                CompoundSecondaryButton(
+                    onClick = onLibrary,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(HugeIcons.PlayCircle, null, Modifier.size(18.dp), tint = CpdColor.CoralRest)
+                    Spacer(Modifier.width(CpdSpace.space15x))
+                    Text("My collection", color = CpdColor.textPrimary)
+                }
             }
         }
     }
@@ -144,7 +276,12 @@ fun PlatformIcon(id: String, modifier: Modifier = Modifier) {
         "twitter" -> HugeIcons.Twitter
         else -> HugeIcons.Language
     }
-    Box(modifier.size(52.dp).background(BrandDarkSurface, RoundedCornerShape(16.dp)), contentAlignment = Alignment.Center) {
-        Icon(icon, null, Modifier.size(28.dp), tint = BrandTextPrimary)
+    Box(
+        modifier = modifier
+            .size(44.dp)
+            .background(CpdColor.bgSubtlePrimary, RoundedCornerShape(CpdRadius.radiusMd)),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(icon, null, Modifier.size(24.dp), tint = CpdColor.textPrimary)
     }
 }

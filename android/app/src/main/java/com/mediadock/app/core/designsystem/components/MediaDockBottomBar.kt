@@ -42,8 +42,8 @@ fun MediaDockBottomBar(
     activeDownloadsCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    val barColor = BrandDarkSurface
-    val borderColor = BrandDarkBorder
+    val barColor = CpdColor.bgSubtleTertiary
+    val borderColor = CpdColor.borderInteractiveSecondary
 
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -51,11 +51,11 @@ fun MediaDockBottomBar(
         tonalElevation = 0.dp
     ) {
         Column {
-            HorizontalDivider(color = borderColor)
+            HorizontalDivider(color = borderColor, thickness = CpdBorderWidth.hairline)
             NavigationBar(
-                modifier = Modifier.heightIn(min = 80.dp).padding(horizontal = 8.dp),
+                modifier = Modifier.heightIn(min = 80.dp).padding(horizontal = CpdSpace.space2x),
                 containerColor = barColor,
-                contentColor = MaterialTheme.colorScheme.onSurface,
+                contentColor = CpdColor.textPrimary,
                 tonalElevation = 0.dp
             ) {
                 BottomNavItem.entries.forEach { item ->
@@ -70,8 +70,8 @@ fun MediaDockBottomBar(
                             if (item == BottomNavItem.DOWNLOADS && activeDownloadsCount > 0) {
                                 BadgedBox(badge = {
                                     Badge(
-                                        containerColor = BrandCoralOrange,
-                                        contentColor = BrandWhite
+                                        containerColor = CpdColor.CoralRest,
+                                        contentColor = CpdColor.White
                                     ) {
                                         Text(if (activeDownloadsCount > 99) "99+" else activeDownloadsCount.toString())
                                     }
@@ -88,11 +88,11 @@ fun MediaDockBottomBar(
                         },
                         alwaysShowLabel = true,
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = BrandWhite,
-                            selectedTextColor = BrandCoralOrange,
-                            indicatorColor = BrandCoralOrange,
-                            unselectedIconColor = BrandTextSecondary,
-                            unselectedTextColor = BrandTextSecondary
+                            selectedIconColor = CpdColor.textOnSolidPrimary,
+                            selectedTextColor = CpdColor.CoralRest,
+                            indicatorColor = CpdColor.CoralRest,
+                            unselectedIconColor = CpdColor.textSecondary,
+                            unselectedTextColor = CpdColor.textSecondary
                         )
                     )
                 }
