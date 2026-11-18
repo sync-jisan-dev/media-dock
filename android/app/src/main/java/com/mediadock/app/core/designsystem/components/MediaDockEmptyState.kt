@@ -88,12 +88,23 @@ fun MediaDockEmptyState(
         ) {
             Box(
                 modifier = Modifier
-                    .size(80.dp)
-                    .clip(CircleShape)
-                    .background(BrandCoralOrange.copy(alpha = 0.12f)),
+                    .size(96.dp)
+                    .clip(RoundedCornerShape(CpdRadius.radiusXl))
+                    .background(CpdColor.bgSubtleSecondary)
+                    .border(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary, RoundedCornerShape(CpdRadius.radiusXl)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, Modifier.size(40.dp), tint = BrandCoralOrange)
+                AsciiHeroAnimation(
+                    modifier = Modifier.fillMaxSize(),
+                    isDark = CpdColor.isDark,
+                    interactive = true
+                )
+                Icon(
+                    icon,
+                    null,
+                    Modifier.size(38.dp),
+                    tint = CpdColor.CoralRest
+                )
             }
             Spacer(Modifier.height(16.dp))
             Text(

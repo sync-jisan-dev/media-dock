@@ -96,7 +96,7 @@ import com.mediadock.app.core.network.ApiConstants
 
 @Composable private fun SettingsCard(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, content: @Composable ColumnScope.() -> Unit) {
     Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, Modifier.clip(RoundedCornerShape(10.dp)).background(BrandCoralOrange).padding(8.dp).size(20.dp), tint = BrandWhite); Spacer(Modifier.width(12.dp)); Text(title, style = MaterialTheme.typography.titleMedium, color = BrandTextPrimary) }
+        Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, Modifier.clip(RoundedCornerShape(10.dp)).background(BrandCoralOrange).padding(8.dp).size(20.dp), tint = BrandWhite); Spacer(Modifier.width(12.dp)); Text(title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface) }
         content()
     } }
 }

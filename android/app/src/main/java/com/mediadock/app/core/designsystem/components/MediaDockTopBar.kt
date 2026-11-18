@@ -64,11 +64,11 @@ fun MediaDockTopBar(
         },
         actions = actions,
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = BrandDarkCanvas,
-            scrolledContainerColor = BrandDarkSurface,
-            titleContentColor = BrandTextPrimary,
-            navigationIconContentColor = BrandTextPrimary,
-            actionIconContentColor = BrandTextPrimary
+            containerColor = com.mediadock.app.core.designsystem.theme.CpdColor.bgCanvasDefault,
+            scrolledContainerColor = com.mediadock.app.core.designsystem.theme.CpdColor.bgSubtleTertiary,
+            titleContentColor = com.mediadock.app.core.designsystem.theme.CpdColor.textPrimary,
+            navigationIconContentColor = com.mediadock.app.core.designsystem.theme.CpdColor.textPrimary,
+            actionIconContentColor = com.mediadock.app.core.designsystem.theme.CpdColor.textPrimary
         )
     )
 }

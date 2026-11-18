@@ -1,5 +1,11 @@
 package com.mediadock.app.feature.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import com.mediadock.app.R
@@ -22,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mediadock.app.core.designsystem.components.AsciiHeroAnimation
 import com.mediadock.app.core.designsystem.components.BrandButton
 import com.mediadock.app.core.designsystem.components.CompoundSecondaryButton
 import com.mediadock.app.core.designsystem.icons.HugeIcons
@@ -78,14 +85,32 @@ import com.mediadock.app.domain.model.PlatformRegistry
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header Wordmark Logo
-            Image(
-                painterResource(R.drawable.mediadock_wordmark_light),
-                contentDescription = "MediaDock",
-                modifier = Modifier.width(240.dp).height(52.dp)
-            )
+            // Hero Wordmark with Live Ambient ASCII Wave Banner
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(118.dp)
+                    .clip(RoundedCornerShape(CpdRadius.radiusXl))
+                    .background(CpdColor.bgSubtleTertiary),
+                contentAlignment = Alignment.Center
+            ) {
+                // Background interactive ASCII animation
+                AsciiHeroAnimation(
+                    modifier = Modifier.fillMaxSize(),
+                    isDark = CpdColor.isDark,
+                    interactive = true
+                )
+                // Wordmark on top
+                Image(
+                    painterResource(if (CpdColor.isDark) R.drawable.mediadock_wordmark_light else R.drawable.mediadock_wordmark_dark),
+                    contentDescription = "MediaDock",
+                    modifier = Modifier
+                        .width(220.dp)
+                        .height(48.dp)
+                )
+            }
 
-            Spacer(Modifier.height(CpdSpace.space8x))
+            Spacer(Modifier.height(CpdSpace.space6x))
 
             // Search / Paste Input styled with Compound Tokens
             OutlinedTextField(
@@ -150,42 +175,50 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 }
             }
 
-            // Copied Link Suggestion Card
-            if (suggestion != null) {
-                Spacer(Modifier.height(CpdSpace.space4x))
-                Surface(
-                    shape = RoundedCornerShape(CpdRadius.radiusXl),
-                    color = CpdColor.bgSubtleSecondary,
-                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary)
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(CpdSpace.space4x)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(HugeIcons.ContentPaste, null, Modifier.size(20.dp), tint = CpdColor.CoralRest)
-                            Text(
-                                "Is this the link you copied?",
-                                Modifier.weight(1f).padding(start = CpdSpace.space2x),
-                                style = MaterialTheme.typography.titleSmall,
-                                color = CpdColor.textPrimary
-                            )
-                            IconButton(onClick = onDismissSuggestion, Modifier.size(32.dp)) {
-                                Icon(HugeIcons.Close, "Dismiss copied link", Modifier.size(18.dp), tint = CpdColor.textSecondary)
-                            }
-                        }
-                        Text(
-                            suggestion,
-                            Modifier.padding(top = CpdSpace.space15x, bottom = CpdSpace.space3x),
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = CpdColor.textSecondary
-                        )
-                        BrandButton(
-                            onClick = { onSuggestion(suggestion) },
-                            modifier = Modifier.fillMaxWidth().height(CpdSpace.space13x)
+            // Copied Link Suggestion Card (Framer-motion spring transition)
+            AnimatedVisibility(
+                visible = suggestion != null,
+                enter = MediaDockMotion.CardEnter,
+                exit = fadeOut(tween(150)) + slideOutVertically { -20 }
+            ) {
+                if (suggestion != null) {
+                    Column {
+                        Spacer(Modifier.height(CpdSpace.space4x))
+                        Surface(
+                            shape = RoundedCornerShape(CpdRadius.radiusXl),
+                            color = CpdColor.bgSubtleSecondary,
+                            border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary)
                         ) {
-                            Icon(HugeIcons.Download, null, Modifier.size(18.dp))
-                            Spacer(Modifier.width(CpdSpace.space2x))
-                            Text("Download this link", fontWeight = FontWeight.SemiBold)
+                            Column(Modifier.fillMaxWidth().padding(CpdSpace.space4x)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(HugeIcons.ContentPaste, null, Modifier.size(20.dp), tint = CpdColor.CoralRest)
+                                    Text(
+                                        "Is this the link you copied?",
+                                        Modifier.weight(1f).padding(start = CpdSpace.space2x),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = CpdColor.textPrimary
+                                    )
+                                    IconButton(onClick = onDismissSuggestion, Modifier.size(32.dp)) {
+                                        Icon(HugeIcons.Close, "Dismiss copied link", Modifier.size(18.dp), tint = CpdColor.textSecondary)
+                                    }
+                                }
+                                Text(
+                                    suggestion,
+                                    Modifier.padding(top = CpdSpace.space15x, bottom = CpdSpace.space3x),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = CpdColor.textSecondary
+                                )
+                                BrandButton(
+                                    onClick = { onSuggestion(suggestion) },
+                                    modifier = Modifier.fillMaxWidth().height(CpdSpace.space13x)
+                                ) {
+                                    Icon(HugeIcons.Download, null, Modifier.size(18.dp))
+                                    Spacer(Modifier.width(CpdSpace.space2x))
+                                    Text("Download this link", fontWeight = FontWeight.SemiBold)
+                                }
+                            }
                         }
                     }
                 }
@@ -217,7 +250,7 @@ import com.mediadock.app.domain.model.PlatformRegistry
                                 .clip(RoundedCornerShape(CpdRadius.radiusLg))
                                 .background(CpdColor.bgSubtleSecondary)
                                 .border(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary, RoundedCornerShape(CpdRadius.radiusLg))
-                                .clickable { onBrowse("https://${platform.domains.first()}") }
+                                .bouncyClickable { onBrowse("https://${platform.domains.first()}") }
                                 .padding(vertical = CpdSpace.space3x),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {

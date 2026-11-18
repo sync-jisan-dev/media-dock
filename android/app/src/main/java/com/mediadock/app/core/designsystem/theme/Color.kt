@@ -74,30 +74,30 @@ val DockIndigoDark = BrandDarkSurface
 val DockSky = BrandCoralOrange
 val DockLavender = BrandCoralOrange
 
-// Material 3 Color Schemes - Unified on Cloudhub Dark Aesthetic
+// Material 3 Color Schemes - Adaptive Light & Dark with Signature Coral Accent
 val md_theme_light_primary = BrandCoralOrange
 val md_theme_light_onPrimary = BrandWhite
-val md_theme_light_primaryContainer = BrandDarkRaised
-val md_theme_light_onPrimaryContainer = BrandCoralOrange
+val md_theme_light_primaryContainer = Color(0xFFFFECE5)
+val md_theme_light_onPrimaryContainer = Color(0xFFC03008)
 val md_theme_light_secondary = BrandCoralOrange
 val md_theme_light_onSecondary = BrandWhite
-val md_theme_light_secondaryContainer = BrandDarkSurface
-val md_theme_light_onSecondaryContainer = BrandTextPrimary
+val md_theme_light_secondaryContainer = Color(0xFFF1F3F5)
+val md_theme_light_onSecondaryContainer = Color(0xFF111827)
 val md_theme_light_tertiary = BrandCoralOrangeLight
 val md_theme_light_onTertiary = BrandWhite
-val md_theme_light_tertiaryContainer = BrandDarkRaised
+val md_theme_light_tertiaryContainer = Color(0xFFFFECE5)
 val md_theme_light_onTertiaryContainer = BrandCoralOrangeLight
-val md_theme_light_error = Color(0xFFFF5252)
-val md_theme_light_errorContainer = Color(0xFF3B1212)
+val md_theme_light_error = Color(0xFFBA1A1A)
+val md_theme_light_errorContainer = Color(0xFFFFDAD6)
 val md_theme_light_onError = BrandWhite
-val md_theme_light_onErrorContainer = Color(0xFFFFB4AB)
-val md_theme_light_background = BrandDarkCanvas
-val md_theme_light_onBackground = BrandTextPrimary
-val md_theme_light_surface = BrandDarkSurface
-val md_theme_light_onSurface = BrandTextPrimary
-val md_theme_light_surfaceVariant = BrandDarkRaised
-val md_theme_light_onSurfaceVariant = BrandTextSecondary
-val md_theme_light_outline = BrandDarkBorder
+val md_theme_light_onErrorContainer = Color(0xFF410002)
+val md_theme_light_background = Color(0xFFF8F9FA)
+val md_theme_light_onBackground = Color(0xFF111827)
+val md_theme_light_surface = Color(0xFFFFFFFF)
+val md_theme_light_onSurface = Color(0xFF111827)
+val md_theme_light_surfaceVariant = Color(0xFFF1F3F5)
+val md_theme_light_onSurfaceVariant = Color(0xFF6B7280)
+val md_theme_light_outline = Color(0xFFE5E7EB)
 
 val md_theme_dark_primary = BrandCoralOrange
 val md_theme_dark_onPrimary = BrandWhite

@@ -257,7 +257,7 @@ import com.mediadock.app.feature.workspace.WorkspaceViewModel
 }
 
 @Composable
-fun browserPageColor() = BrandDarkCanvas
+fun browserPageColor() = com.mediadock.app.core.designsystem.theme.CpdColor.bgCanvasDefault
 
 private fun WebView.applyDesktop(desktop: Boolean, context: Context) {
     val mobile = WebSettings.getDefaultUserAgent(context)
