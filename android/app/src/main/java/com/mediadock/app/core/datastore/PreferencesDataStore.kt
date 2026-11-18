@@ -56,7 +56,12 @@ class PreferencesDataStore @Inject constructor(
         AppPreferences(
             themeMode = themeMode,
             serverUrl = prefs[PreferencesKeys.SERVER_URL]
-                ?.takeUnless { it.trimEnd('/') == ApiConstants.LEGACY_TUNNEL_URL.trimEnd('/') }
+                ?.takeUnless {
+                    val trimmed = it.trimEnd('/')
+                    trimmed == ApiConstants.LEGACY_TUNNEL_URL.trimEnd('/') ||
+                        trimmed == "http://10.0.2.2:3000" ||
+                        trimmed == "http://localhost:3000"
+                }
                 ?: ApiConstants.DEFAULT_BASE_URL,
             defaultVideoQuality = prefs[PreferencesKeys.DEFAULT_VIDEO_QUALITY] ?: "1080p",
             defaultAudioFormat = prefs[PreferencesKeys.DEFAULT_AUDIO_FORMAT] ?: "mp3",
