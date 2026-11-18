@@ -52,7 +52,6 @@ import com.mediadock.app.core.network.ApiConstants
     }, confirmButton = { TextButton(onClick = { viewModel.setServerUrl(server.trim()); serverDialog = false }, enabled = WorkspaceRules.validUrl(server)) { Text("Save") } }, dismissButton = { TextButton(onClick = { serverDialog = false }) { Text("Cancel") } })
     if (reset) AlertDialog(onDismissRequest = { reset = false }, title = { Text("Reset preferences?") }, text = { Text("Restores theme, download defaults, folder and cloud server. Your files, collections and saved links stay saved.") }, confirmButton = { TextButton(onClick = { viewModel.resetPreferences(); reset = false }) { Text("Reset") } }, dismissButton = { TextButton(onClick = { reset = false }) { Text("Cancel") } })
     LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        item { SectionHeading("Make it yours", "A quieter space for your media.") }
         item { SettingsCard("Appearance", HugeIcons.DarkMode) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ThemeMode.entries.forEach { mode -> FilterChip(prefs.themeMode == mode, { viewModel.setThemeMode(mode) }, { Text(mode.name.lowercase().replaceFirstChar { it.uppercase() }) }) } }
         } }

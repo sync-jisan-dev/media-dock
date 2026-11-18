@@ -115,7 +115,6 @@ import java.util.Date
     }, confirmButton = { TextButton(onClick = { details = null }) { Text("Done") } })
     Box(modifier.fillMaxSize()) {
         LazyColumn(contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            item { SectionHeading("Your offline collection", "Organized by you. Ready whenever.", action = { TextButton(onClick = { selectionMode = !selectionMode; selection = emptySet() }) { Text(if (selectionMode) "Done" else "Select") } }) }
             item { Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { StatTile(allFiles.size.toString(), "Files", Modifier.weight(1f)); StatTile(FormattingUtils.formatBytes(allFiles.sumOf { it.fileSizeBytes }), "Saved media", Modifier.weight(1f)) } }
             item { OutlinedTextField(query, viewModel::onSearchChange, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search titles, formats or notes") }, leadingIcon = { Icon(HugeIcons.Search, null) }, shape = RoundedCornerShape(16.dp)) }
             item { val types = listOf("ALL" to "All", "video" to "Videos", "audio" to "Music", "image" to "Images", "gif" to "GIFs"); MediaDockPillTabs(types.map { it.second }, types.indexOfFirst { it.first == filter }.coerceAtLeast(0), { viewModel.selectFilter(types[it].first) }) }
@@ -125,6 +124,7 @@ import java.util.Date
                 IconButton(onClick = { workspace.edit { it.copy(grid = !it.grid) } }) { Icon(if (state.grid) HugeIcons.FolderOpen else HugeIcons.Collections, if (state.grid) "List view" else "Grid view") }
             } }
             item { Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                TextButton(onClick = { selectionMode = !selectionMode; selection = emptySet() }) { Text(if (selectionMode) "Done" else "Select") }
                 TextButton(onClick = { createCollection = true; collectionName = "" }) { Text("New collection") }
                 TextButton(onClick = { workspace.edit { it.copy(compact = !it.compact) } }) { Text(if (state.compact) "Comfortable" else "Compact rows") }
                 TextButton(onClick = { export.launch("MediaDock-library.json") }, enabled = files.isNotEmpty()) { Icon(HugeIcons.Share, "Export library manifest", Modifier.size(20.dp)) }
@@ -141,7 +141,7 @@ import java.util.Date
                     if (collectionId != null) TextButton(onClick = { val ids = selection; val currentCollection = collectionId; workspace.edit { it.copy(collections = it.collections.map { if (it.id == currentCollection) it.copy(fileIds = it.fileIds - ids) else it }) }; selection = emptySet() }, enabled = selection.isNotEmpty()) { Text("Remove from this collection") }
                 }
             } }
-            if (files.isEmpty()) item { Surface(shape = RoundedCornerShape(16.dp), color = BrandDarkSurface, border = androidx.compose.foundation.BorderStroke(1.dp, BrandDarkBorder)) { Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) { Icon(HugeIcons.PlayCircle, null, Modifier.size(48.dp), tint = BrandCoralOrange); Spacer(Modifier.height(16.dp)); Text(if (allFiles.isEmpty()) "Your library starts here" else "No matching files", style = MaterialTheme.typography.titleMedium, color = BrandTextPrimary); Spacer(Modifier.height(4.dp)); Text(if (allFiles.isEmpty()) "Download media to see it in your collection." else "Try another filter, collection or search.", style = MaterialTheme.typography.bodySmall, color = BrandTextSecondary, textAlign = TextAlign.Center) } } }
+            if (files.isEmpty()) item { Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) { Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) { Icon(HugeIcons.PlayCircle, null, Modifier.size(48.dp), tint = BrandCoralOrange); Spacer(Modifier.height(16.dp)); Text(if (allFiles.isEmpty()) "Your library starts here" else "No matching files", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface); Spacer(Modifier.height(4.dp)); Text(if (allFiles.isEmpty()) "Download media to see it in your collection." else "Try another filter, collection or search.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center) } } }
             items(files.chunked(if (state.grid) 2 else 1), key = { it.first().id }) { row -> Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 row.forEach { file -> LibraryCard(file, LibraryRules.title(file, state), file.id in state.favorites, selectionMode, file.id in selection, state.grid, state.compact, Modifier.weight(1f),
                     onOpen = { if (selectionMode) selection = if (file.id in selection) selection - file.id else selection + file.id else open(file) },

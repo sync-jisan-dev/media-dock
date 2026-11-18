@@ -32,7 +32,7 @@ enum class BottomNavItem(val route: String, val titleRes: Int, val icon: ImageVe
     EXPLORE("explore", R.string.nav_explore, HugeIcons.Explore),
     DOWNLOADS("downloads", R.string.nav_downloads, HugeIcons.Download),
     HISTORY("history", R.string.nav_history, HugeIcons.FolderOpen),
-    SETTINGS("settings", R.string.nav_settings, HugeIcons.PersonOutline)
+    SETTINGS("settings", R.string.nav_settings, HugeIcons.Settings)
 }
 
 @Composable

@@ -229,27 +229,44 @@ import com.mediadock.app.feature.workspace.WorkspaceViewModel
             AndroidView(factory = { webView }, modifier = Modifier.weight(1f).fillMaxWidth())
         } else {
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    item { Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { TextButton(onClick = onSavedLinks) { Text("Saved pages") }; TextButton(onClick = { tabsDialog = true }) { Text("${session.tabs.size} tabs") } } }
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
                     item {
-                        Spacer(Modifier.height(32.dp))
-                        Text("Your space to explore.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = BrandTextPrimary)
+                        Row(
+                            Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            TextButton(onClick = onSavedLinks) {
+                                Icon(HugeIcons.FolderOpen, null, Modifier.size(18.dp), tint = CpdColor.CoralRest)
+                                Spacer(Modifier.width(6.dp))
+                                Text("Saved pages", color = CpdColor.textPrimary, style = MaterialTheme.typography.labelMedium)
+                            }
+                            TextButton(onClick = { tabsDialog = true }) {
+                                Icon(HugeIcons.Collections, null, Modifier.size(18.dp), tint = CpdColor.CoralRest)
+                                Spacer(Modifier.width(6.dp))
+                                Text("${session.tabs.size} tabs", color = CpdColor.textPrimary, style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                    item {
+                        Spacer(Modifier.height(16.dp))
+                        Text("Your space to explore.", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, color = CpdColor.textPrimary)
                         Spacer(Modifier.height(6.dp))
-                        Text("Search anything or visit a website.", style = MaterialTheme.typography.bodyMedium, color = BrandTextSecondary)
+                        Text("Search anything or visit a website.", style = MaterialTheme.typography.bodyMedium, color = CpdColor.textSecondary)
                         Spacer(Modifier.height(24.dp))
                     }
                     item { OutlinedTextField(startQuery, { startQuery = it }, Modifier.fillMaxWidth(), singleLine = true, placeholder = { Text("Search or enter web address") }, leadingIcon = { Icon(HugeIcons.Search, null) }, trailingIcon = { IconButton(onClick = { open(startQuery) }, enabled = startQuery.isNotBlank()) { Icon(HugeIcons.ArrowForward, "Search the web") } }, shape = RoundedCornerShape(28.dp), keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Go), keyboardActions = androidx.compose.foundation.text.KeyboardActions(onGo = { open(startQuery) })); Spacer(Modifier.height(24.dp)) }
-                    items(PlatformRegistry.platforms.take(8).chunked(4)) { platforms -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) { platforms.forEach { platform -> Column(Modifier.weight(1f).clickable { open("https://${platform.domains.first()}") }.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) { PlatformIcon(platform.id); Spacer(Modifier.height(8.dp)); Text(platform.name, style = MaterialTheme.typography.labelSmall, maxLines = 1) } } } }
-                    if (currentUrl.isNotBlank()) item { TextButton(onClick = { onStartChanged(false); webView.onResume() }) { Text("Continue browsing") } }
+                    items(PlatformRegistry.platforms.take(8).chunked(4)) { platforms -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) { platforms.forEach { platform -> Column(Modifier.weight(1f).clickable { open("https://${platform.domains.first()}") }.padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) { PlatformIcon(platform.id); Spacer(Modifier.height(8.dp)); Text(platform.name, style = MaterialTheme.typography.labelSmall, color = CpdColor.textSecondary, maxLines = 1) } } } }
+                    if (currentUrl.isNotBlank()) item { TextButton(onClick = { onStartChanged(false); webView.onResume() }) { Text("Continue browsing", color = CpdColor.CoralRest) } }
                 }
             }
         }
         if (!showStart && currentUrl.isNotBlank()) {
-        Surface(color = BrandDarkSurface, contentColor = BrandTextPrimary) { Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            IconButton(onClick = { webView.goBack() }, enabled = canGoBack) { Icon(HugeIcons.ArrowBack, "Previous page", tint = if (canGoBack) BrandTextPrimary else BrandTextMuted) }
-            IconButton(onClick = { webView.goForward() }, enabled = canGoForward) { Icon(HugeIcons.ArrowForward, "Next page", tint = if (canGoForward) BrandTextPrimary else BrandTextMuted) }
-            IconButton(onClick = { onStartChanged(true); startQuery = ""; webView.onPause() }) { Icon(HugeIcons.Home, "Browser start page", tint = BrandTextPrimary) }
-            IconButton(onClick = { if (progress < 100) { webView.stopLoading(); progress = 100 } else if (currentUrl.isNotBlank()) webView.reload() }, enabled = currentUrl.isNotBlank()) { Icon(if (progress < 100) HugeIcons.Close else HugeIcons.Refresh, if (progress < 100) "Stop loading" else "Reload page", tint = BrandTextPrimary) }
+        Surface(color = CpdColor.bgSubtleTertiary, contentColor = CpdColor.textPrimary) { Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            IconButton(onClick = { webView.goBack() }, enabled = canGoBack) { Icon(HugeIcons.ArrowBack, "Previous page", tint = if (canGoBack) CpdColor.textPrimary else CpdColor.textDisabled) }
+            IconButton(onClick = { webView.goForward() }, enabled = canGoForward) { Icon(HugeIcons.ArrowForward, "Next page", tint = if (canGoForward) CpdColor.textPrimary else CpdColor.textDisabled) }
+            IconButton(onClick = { onStartChanged(true); startQuery = ""; webView.onPause() }) { Icon(HugeIcons.Home, "Browser start page", tint = CpdColor.textPrimary) }
+            IconButton(onClick = { if (progress < 100) { webView.stopLoading(); progress = 100 } else if (currentUrl.isNotBlank()) webView.reload() }, enabled = currentUrl.isNotBlank()) { Icon(if (progress < 100) HugeIcons.Close else HugeIcons.Refresh, if (progress < 100) "Stop loading" else "Reload page", tint = CpdColor.textPrimary) }
             BrandButton(onClick = { downloadCallback(currentUrl) }, enabled = WorkspaceRules.validUrl(currentUrl), contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)) { Icon(HugeIcons.Download, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("Save") }
         } }
         }

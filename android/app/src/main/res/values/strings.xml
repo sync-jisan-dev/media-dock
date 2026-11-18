@@ -5,7 +5,7 @@
     <string name="nav_home">Home</string>
     <string name="nav_downloads">Queue</string>
     <string name="nav_history">My files</string>
-    <string name="nav_settings">Me</string>
+    <string name="nav_settings">Settings</string>
     <string name="nav_explore">Browse</string>
 
     <!-- Home Screen -->

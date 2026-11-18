@@ -24,7 +24,6 @@ import com.mediadock.app.core.designsystem.theme.*
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(CpdSpace.space3x)
         ) {
-            Box(Modifier.width(CpdSpace.space1x).height(38.dp).clip(RoundedCornerShape(CpdRadius.radiusSm)).background(CpdColor.CoralRest))
             Column(Modifier.weight(1f)) {
                 Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold, color = CpdColor.textPrimary)
                 if (subtitle.isNotBlank()) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = CpdColor.textSecondary)
@@ -42,8 +41,6 @@ import com.mediadock.app.core.designsystem.theme.*
         border = BorderStroke(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary)
     ) {
         Column(Modifier.padding(CpdSpace.space4x)) {
-            Box(Modifier.width(CpdSpace.space6x).height(CpdSpace.space05x + 1.dp).clip(RoundedCornerShape(CpdRadius.radiusSm)).background(CpdColor.CoralRest))
-            Spacer(Modifier.height(CpdSpace.space3x))
             Text(value, style = MaterialTheme.typography.headlineSmall, color = CpdColor.textPrimary)
             Text(label, style = MaterialTheme.typography.labelMedium, color = CpdColor.textSecondary)
         }

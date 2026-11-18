@@ -161,12 +161,15 @@ fun AsciiHeroAnimation(
                         val glyph = GLYPH_CHARS[charIdx]
 
                         if (glyph != ' ') {
-                            // Compute color
-                            val alpha = if (scrambleBonus > 0.1f) {
-                                (0.4f + scrambleBonus * 0.6f).coerceIn(0f, 1f)
-                            } else {
-                                (0.15f + combinedIntensity * 0.70f).coerceIn(0f, 1f)
-                            }
+                            // Compute edge fade all around (vignette so glyphs smoothly dissolve into canvas)
+                            val edgeDistX = minOf(col.toFloat(), (cols - 1 - col).toFloat()) / (cols * 0.22f).coerceAtLeast(1f)
+                            val edgeDistY = minOf(row.toFloat(), (rows - 1 - row).toFloat()) / (rows * 0.25f).coerceAtLeast(1f)
+                            val edgeFade = (edgeDistX.coerceIn(0f, 1f) * edgeDistY.coerceIn(0f, 1f))
+
+                            // Subtle airy opacity requested by user
+                            val baseAlpha = (0.035f + combinedIntensity * 0.12f) * edgeFade
+                            val scrambleAlpha = (0.16f + scrambleBonus * 0.28f) * edgeFade
+                            val alpha = if (scrambleBonus > 0.1f) scrambleAlpha else baseAlpha
 
                             val resolvedColor = when {
                                 scrambleBonus > 0.3f -> coralBright

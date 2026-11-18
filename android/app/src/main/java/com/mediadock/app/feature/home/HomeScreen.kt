@@ -85,28 +85,27 @@ import com.mediadock.app.domain.model.PlatformRegistry
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Hero Wordmark with Live Ambient ASCII Wave Banner
+            // Hero Wordmark with Ambient Borderless ASCII Wave & Brand Color Tint
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(118.dp)
-                    .clip(RoundedCornerShape(CpdRadius.radiusXl))
-                    .background(CpdColor.bgSubtleTertiary),
+                    .height(116.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Background interactive ASCII animation
+                // Background interactive ASCII animation (subtle & fading into canvas all around)
                 AsciiHeroAnimation(
                     modifier = Modifier.fillMaxSize(),
                     isDark = CpdColor.isDark,
                     interactive = true
                 )
-                // Wordmark on top
+                // Wordmark tinted with MediaDock signature coral-orange brand color
                 Image(
-                    painterResource(if (CpdColor.isDark) R.drawable.mediadock_wordmark_light else R.drawable.mediadock_wordmark_dark),
+                    painter = painterResource(if (CpdColor.isDark) R.drawable.mediadock_wordmark_light else R.drawable.mediadock_wordmark_dark),
                     contentDescription = "MediaDock",
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(CpdColor.CoralRest),
                     modifier = Modifier
-                        .width(220.dp)
-                        .height(48.dp)
+                        .width(230.dp)
+                        .height(50.dp)
                 )
             }
 
