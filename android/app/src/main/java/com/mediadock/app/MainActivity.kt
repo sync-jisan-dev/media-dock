@@ -70,10 +70,14 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(sharedUrl) { if (!sharedUrl.isNullOrBlank()) navController.navigateToTopLevel(Screen.Home.route) }
                 val isRootScreen = currentRoute in topLevelRoutes
                 val pageColor = if (currentRoute == Screen.Home.route || currentRoute == Screen.Explore.route || currentRoute == Screen.Browser.route) browserPageColor() else androidx.compose.material3.MaterialTheme.colorScheme.background
+                val navBarColor = if (isRootScreen) com.mediadock.app.core.designsystem.theme.CpdColor.bgCanvasDefault else pageColor
                 val view = LocalView.current
                 SideEffect {
                     window.statusBarColor = pageColor.toArgb()
-                    WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = pageColor.luminance() > .5f
+                    window.navigationBarColor = navBarColor.toArgb()
+                    val insets = WindowCompat.getInsetsController(window, view)
+                    insets.isAppearanceLightStatusBars = pageColor.luminance() > .5f
+                    insets.isAppearanceLightNavigationBars = navBarColor.luminance() > .5f
                 }
 
                 Scaffold(

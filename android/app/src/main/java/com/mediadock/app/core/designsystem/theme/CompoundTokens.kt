@@ -42,25 +42,25 @@ data class CompoundColorTokens(
 // --- Dark Mode Compound Tokens (Signature Cloudhub Palette) ---
 val DarkCompoundColorTokens = CompoundColorTokens(
     isDark = true,
-    bgCanvasDefault = Color(0xFF111111),
-    bgSubtleTertiary = Color(0xFF181A1F),
-    bgSubtleSecondary = Color(0xFF1D1F24),
-    bgSubtlePrimary = Color(0xFF26282D),
-    textPrimary = Color(0xFFFFFFFF),
-    textSecondary = Color(0xFF808994),
-    textDisabled = Color(0xFF656C76),
-    textOnSolidPrimary = Color(0xFFFFFFFF),
-    textActionAccent = Color(0xFFFE5223),
-    bgActionPrimaryRest = Color(0xFFFE5223),
-    bgActionPrimaryHovered = Color(0xFFFF663D),
-    bgActionPrimaryPressed = Color(0xFFE0451B),
-    bgActionPrimaryDisabled = Color(0xFF323539),
-    bgActionSecondaryRest = Color(0xFF1D1F24),
-    bgActionSecondaryHovered = Color(0xFF26282D),
-    borderInteractivePrimary = Color(0xFF656C76),
-    borderInteractiveSecondary = Color(0xFF26282D),
-    borderFocused = Color(0xFFFE5223),
-    borderDisabled = Color(0xFF323539),
+    bgCanvasDefault = BrandDarkCanvas,             // #111111
+    bgSubtleTertiary = BrandDarkSurface,           // #1A1A1A
+    bgSubtleSecondary = BrandDarkRaised,           // #222222
+    bgSubtlePrimary = Color(0xFF282828),
+    textPrimary = BrandTextPrimary,                // #FFFFFF
+    textSecondary = BrandTextSecondary,            // #A1A1AA
+    textDisabled = BrandTextMuted,                 // #71717A
+    textOnSolidPrimary = BrandWhite,
+    textActionAccent = BrandCoralOrange,           // #FE5223
+    bgActionPrimaryRest = BrandCoralOrange,        // #FE5223
+    bgActionPrimaryHovered = BrandCoralOrangeLight,// #FF6B42
+    bgActionPrimaryPressed = BrandCoralOrangeDark, // #E0451B
+    bgActionPrimaryDisabled = Color(0xFF2E2E2E),
+    bgActionSecondaryRest = BrandDarkRaised,       // #222222
+    bgActionSecondaryHovered = BrandDarkBorder,    // #2E2E2E
+    borderInteractivePrimary = Color(0xFF3E3E3E),
+    borderInteractiveSecondary = BrandDarkBorder,  // #2E2E2E
+    borderFocused = BrandCoralOrange,              // #FE5223
+    borderDisabled = Color(0xFF2E2E2E),
     actionPrimaryGradient = Brush.horizontalGradient(
         listOf(Color(0xFFFE5827), Color(0xFFFC4724))
     )

@@ -22,7 +22,7 @@ enum class ThemeMode {
 }
 
 data class AppPreferences(
-    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val themeMode: ThemeMode = ThemeMode.DARK,
     val serverUrl: String = ApiConstants.DEFAULT_BASE_URL,
     val defaultVideoQuality: String = "1080p",
     val defaultAudioFormat: String = "mp3",
@@ -46,11 +46,11 @@ class PreferencesDataStore @Inject constructor(
     }
 
     val preferencesFlow: Flow<AppPreferences> = context.dataStore.data.map { prefs ->
-        val themeStr = prefs[PreferencesKeys.THEME_MODE] ?: ThemeMode.SYSTEM.name
+        val themeStr = prefs[PreferencesKeys.THEME_MODE] ?: ThemeMode.DARK.name
         val themeMode = try {
             ThemeMode.valueOf(themeStr)
         } catch (e: Exception) {
-            ThemeMode.SYSTEM
+            ThemeMode.DARK
         }
 
         AppPreferences(

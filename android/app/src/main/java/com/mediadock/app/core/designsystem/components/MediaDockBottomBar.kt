@@ -42,7 +42,7 @@ fun MediaDockBottomBar(
     activeDownloadsCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    val barColor = CpdColor.bgSubtleTertiary
+    val barColor = CpdColor.bgCanvasDefault
     val borderColor = CpdColor.borderInteractiveSecondary
 
     Surface(
