@@ -14,8 +14,8 @@ android {
         applicationId = "com.mediadock.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.0.2"
+        versionCode = 4
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -133,6 +133,9 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.9")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     testImplementation("app.cash.turbine:turbine:1.0.0")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
+    // Current test tooling uses public input APIs on the API 37 emulator.
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 }

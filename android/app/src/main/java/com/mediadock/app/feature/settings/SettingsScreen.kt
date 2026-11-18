@@ -1,361 +1,97 @@
 package com.mediadock.app.feature.settings
 
-import com.mediadock.app.core.designsystem.icons.HugeIcons
-
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.mediadock.app.R
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.mediadock.app.BuildConfig
+import com.mediadock.app.core.common.FormattingUtils
+import com.mediadock.app.core.common.MediaActions
 import com.mediadock.app.core.datastore.ThemeMode
-import com.mediadock.app.core.designsystem.theme.bouncyClickable
+import com.mediadock.app.core.datastore.WorkspaceRules
+import com.mediadock.app.core.designsystem.components.*
+import com.mediadock.app.core.designsystem.icons.HugeIcons
+import com.mediadock.app.core.network.ApiConstants
 
-@Composable
-fun SettingsScreen(
-    viewModel: SettingsViewModel,
-    modifier: Modifier = Modifier
-) {
+@Composable fun SettingsScreen(viewModel: SettingsViewModel, modifier: Modifier = Modifier, onSavedLinks: () -> Unit = {}, diagnostics: DiagnosticsViewModel = hiltViewModel()) {
     val prefs by viewModel.preferences.collectAsState()
+    val library by diagnostics.library.collectAsState()
+    val storage by diagnostics.storage.collectAsState()
+    val checking by diagnostics.checking.collectAsState()
+    val connection by diagnostics.connection.collectAsState()
     val context = LocalContext.current
-
-    var showServerUrlDialog by remember { mutableStateOf(false) }
-    var tempServerUrl by remember { mutableStateOf(prefs.serverUrl) }
-
-    val safLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocumentTree()
-    ) { uri ->
-        if (uri != null) {
-            try {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                )
-            } catch (_: Exception) {}
+    var serverDialog by remember { mutableStateOf(false) }
+    var server by remember { mutableStateOf("") }
+    var reset by remember { mutableStateOf(false) }
+    var concurrency by remember(prefs.maxConcurrentDownloads) { mutableStateOf(prefs.maxConcurrentDownloads.toFloat()) }
+    val directory = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri != null) try {
+            context.contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             viewModel.setCustomDownloadDir(uri.toString())
-        }
+        } catch (_: Exception) { MediaActions.message(context, "This folder cannot be used. Choose another folder.") }
     }
-
-    if (showServerUrlDialog) {
-        AlertDialog(
-            onDismissRequest = { showServerUrlDialog = false },
-            title = { Text(text = stringResource(R.string.settings_server_url)) },
-            text = {
-                OutlinedTextField(
-                    value = tempServerUrl,
-                    onValueChange = { tempServerUrl = it },
-                    label = { Text("Server Base URL") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.setServerUrl(tempServerUrl.trim())
-                    showServerUrlDialog = false
-                }) {
-                    Text(text = "Save", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showServerUrlDialog = false }) {
-                    Text(text = "Cancel")
-                }
+    if (serverDialog) AlertDialog(onDismissRequest = { serverDialog = false }, title = { Text("Backend connection") }, text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Use the HTTPS address of your cloud backend.", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(server, { server = it }, Modifier.fillMaxWidth(), singleLine = true, label = { Text("Server URL") }, isError = server.isNotBlank() && !WorkspaceRules.validUrl(server))
+        }
+    }, confirmButton = { TextButton(onClick = { viewModel.setServerUrl(server.trim()); serverDialog = false }, enabled = WorkspaceRules.validUrl(server)) { Text("Save") } }, dismissButton = { TextButton(onClick = { serverDialog = false }) { Text("Cancel") } })
+    if (reset) AlertDialog(onDismissRequest = { reset = false }, title = { Text("Reset preferences?") }, text = { Text("Restores theme, download defaults, folder and cloud server. Your files, collections and saved links stay saved.") }, confirmButton = { TextButton(onClick = { viewModel.resetPreferences(); reset = false }) { Text("Reset") } }, dismissButton = { TextButton(onClick = { reset = false }) { Text("Cancel") } })
+    LazyColumn(modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        item { SectionHeading("Make it yours", "A quieter space for your media.") }
+        item { SettingsCard("Appearance", HugeIcons.DarkMode) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ThemeMode.entries.forEach { mode -> FilterChip(prefs.themeMode == mode, { viewModel.setThemeMode(mode) }, { Text(mode.name.lowercase().replaceFirstChar { it.uppercase() }) }) } }
+        } }
+        item { SettingsCard("Download defaults", HugeIcons.Download) {
+            Text("Preferred video quality", style = MaterialTheme.typography.labelLarge)
+            MediaDockPillTabs(listOf("360p", "720p", "1080p", "Highest"), listOf("360p", "720p", "1080p", "highest").indexOf(prefs.defaultVideoQuality).coerceAtLeast(0), { viewModel.setDefaultVideoQuality(listOf("360p", "720p", "1080p", "highest")[it]) })
+            Text("Preferred audio format", style = MaterialTheme.typography.labelLarge)
+            MediaDockPillTabs(listOf("MP3", "M4A", "OPUS", "FLAC"), listOf("mp3", "m4a", "opus", "flac").indexOf(prefs.defaultAudioFormat).coerceAtLeast(0), { viewModel.setDefaultAudioFormat(listOf("mp3", "m4a", "opus", "flac")[it]) })
+            Text("Preferences apply when the source supports them.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("Download on Wi-Fi only", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium); Switch(prefs.wifiOnlyDownloading, viewModel::setWifiOnly) }
+            Text("Simultaneous transfers · ${concurrency.toInt()}", style = MaterialTheme.typography.bodyMedium)
+            Slider(concurrency, { concurrency = it }, valueRange = 1f..5f, steps = 3, onValueChangeFinished = { viewModel.setMaxConcurrent(concurrency.toInt()) })
+            OutlinedButton(onClick = { directory.launch(null) }, Modifier.fillMaxWidth()) { Icon(HugeIcons.Folder, null); Spacer(Modifier.width(8.dp)); Text(if (prefs.customDownloadDirectoryUri == null) "Choose download folder" else "Change download folder") }
+            if (prefs.customDownloadDirectoryUri != null) TextButton(onClick = { viewModel.setCustomDownloadDir(null) }) { Text("Use default media folder") }
+        } }
+        item { SettingsCard("Storage overview", HugeIcons.FolderOpen) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { StatTile(FormattingUtils.formatBytes(storage.first), "Device free", Modifier.weight(1f)); StatTile(FormattingUtils.formatBytes(library.sumOf { it.fileSizeBytes }), "Library size", Modifier.weight(1f)) }
+            if (storage.second > 0) LinearProgressIndicator(progress = { (1f - storage.first.toFloat() / storage.second).coerceIn(0f, 1f) }, Modifier.fillMaxWidth())
+            Text("${library.size} library files · ${FormattingUtils.formatBytes(storage.second)} device capacity", style = MaterialTheme.typography.bodySmall)
+            TextButton(onClick = { diagnostics.refreshStorage() }) { Text("Refresh storage") }
+        } }
+        item { SettingsCard("Cloud connection", HugeIcons.Cloud) {
+            Text(prefs.serverUrl, style = MaterialTheme.typography.bodySmall)
+            Text(connection, style = MaterialTheme.typography.bodyMedium)
+            if (checking) LinearProgressIndicator(Modifier.fillMaxWidth())
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = diagnostics::check, enabled = !checking) { Text(if (checking) "Checking…" else "Test connection") }
+                OutlinedButton(onClick = { server = prefs.serverUrl; serverDialog = true }) { Text("Edit URL") }
             }
-        )
+            TextButton(onClick = { viewModel.setServerUrl(ApiConstants.DEFAULT_BASE_URL) }) { Text("Use default cloud server") }
+            Text("Free hosting may sleep when idle. Availability depends on your host and provider limits.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        } }
+        item { SettingsCard("Your workspace", HugeIcons.Collections) {
+            OutlinedButton(onClick = onSavedLinks, Modifier.fillMaxWidth()) { Text("Manage saved links & recent pages") }
+            TextButton(onClick = { val host = runCatching { java.net.URI(prefs.serverUrl).host }.getOrNull().orEmpty(); MediaActions.shareText(context, "MediaDock ${BuildConfig.VERSION_NAME}\nAndroid ${android.os.Build.VERSION.RELEASE}\nBackend host: $host\nConnection: $connection\nDevice free: ${FormattingUtils.formatBytes(storage.first)}\nLibrary files: ${library.size}") }) { Text("Share connection report") }
+            TextButton(onClick = { reset = true }) { Text("Reset preferences") }
+        } }
+        item { Text("MediaDock ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.titleSmall); Text("Made for your media. Save content you have permission to download.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
     }
+}
 
-    LazyColumn(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            Card(shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                Row(Modifier.fillMaxWidth().padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(HugeIcons.Folder, null, Modifier.size(48.dp), tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(16.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Your media. Your way.", style = MaterialTheme.typography.titleLarge)
-                        Text("Personalize your MediaDock experience", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-        }
-        // Theme / Appearance
-        item {
-            Text(
-                text = stringResource(R.string.settings_appearance),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = HugeIcons.DarkMode, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(text = stringResource(R.string.settings_theme), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ThemeMode.entries.forEach { mode ->
-                            val isSelected = prefs.themeMode == mode
-                            FilterChip(
-                                selected = isSelected,
-                                onClick = { viewModel.setThemeMode(mode) },
-                                label = {
-                                    Text(
-                                        text = when (mode) {
-                                            ThemeMode.SYSTEM -> "System"
-                                            ThemeMode.LIGHT -> "Light"
-                                            ThemeMode.DARK -> "Dark"
-                                        },
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Download Preferences
-        item {
-            Text(
-                text = stringResource(R.string.settings_download_prefs),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Storage Directory Picker
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .bouncyClickable { safLauncher.launch(null) },
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = HugeIcons.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(text = stringResource(R.string.settings_storage_location), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                                Text(
-                                    text = if (prefs.customDownloadDirectoryUri != null) "Custom SAF Directory" else "Default Scoped Media Store",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                        if (prefs.customDownloadDirectoryUri != null) {
-                            TextButton(onClick = { viewModel.setCustomDownloadDir(null) }) {
-                                Text("Reset", color = MaterialTheme.colorScheme.primary)
-                            }
-                        }
-                    }
-
-                    // Max Concurrent Downloads Slider
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = HugeIcons.Speed, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = "${stringResource(R.string.settings_max_concurrent)}: ${prefs.maxConcurrentDownloads}",
-                                style = MaterialTheme.typography.bodyLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                        Slider(
-                            value = prefs.maxConcurrentDownloads.toFloat(),
-                            onValueChange = { viewModel.setMaxConcurrent(it.toInt()) },
-                            valueRange = 1f..5f,
-                            steps = 3,
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    }
-
-                    // Wi-Fi Only Switch
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(imageVector = HugeIcons.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = stringResource(R.string.settings_wifi_only), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                        }
-                        Switch(
-                            checked = prefs.wifiOnlyDownloading,
-                            onCheckedChange = { viewModel.setWifiOnly(it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    }
-                }
-            }
-        }
-
-        // Server Connection
-        item {
-            Text(
-                text = "Backend Server Connection",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .bouncyClickable {
-                        tempServerUrl = prefs.serverUrl
-                        showServerUrlDialog = true
-                    }
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(imageVector = HugeIcons.Dns, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "API Endpoint", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold)
-                        Text(text = prefs.serverUrl, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = prefs.serverUrl.contains("10.0.2.2"),
-                    onClick = { viewModel.setServerUrl("http://10.0.2.2:3000/") },
-                    label = { Text("PC Emulator") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-                FilterChip(
-                    selected = prefs.serverUrl.contains("192.168.0.102"),
-                    onClick = { viewModel.setServerUrl("http://192.168.0.102:3000/") },
-                    label = { Text("Wi-Fi (PC)") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-                FilterChip(
-                    selected = prefs.serverUrl.contains("onrender.com"),
-                    onClick = { viewModel.setServerUrl("https://media-dock.onrender.com/") },
-                    label = { Text("Cloud 24/7") },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        }
-
-        // About MediaDock
-        item {
-            Text(
-                text = stringResource(R.string.settings_about),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(imageVector = HugeIcons.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Text(text = "MediaDock", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
-                    }
-                    Text(
-                        text = "Universal, privacy-first all-in-one Android media downloader. Powered by Snagbox NestJS backend engine with yt-dlp, FFmpeg, and high-performance scoped storage.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(text = "Version: 1.0.0 (Production Release)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-        }
-    }
+@Composable private fun SettingsCard(title: String, icon: androidx.compose.ui.graphics.vector.ImageVector, content: @Composable ColumnScope.() -> Unit) {
+    Surface(shape = RoundedCornerShape(22.dp), color = MaterialTheme.colorScheme.surface) { Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) { Icon(icon, null, Modifier.size(22.dp)); Spacer(Modifier.width(10.dp)); Text(title, style = MaterialTheme.typography.titleMedium) }
+        content()
+    } }
 }

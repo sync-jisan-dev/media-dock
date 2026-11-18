@@ -39,4 +39,5 @@ interface DownloadRepository {
     fun searchHistory(query: String): Flow<List<HistoryEntity>>
     suspend fun deleteHistory(id: Long)
     suspend fun clearHistory()
+    suspend fun restoreHistory(items: List<HistoryEntity>)
 }

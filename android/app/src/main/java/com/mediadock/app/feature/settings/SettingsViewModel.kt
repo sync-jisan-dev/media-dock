@@ -64,6 +64,17 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun resetPreferences() { viewModelScope.launch {
+        val defaults = AppPreferences()
+        settingsRepository.setThemeMode(defaults.themeMode)
+        settingsRepository.setServerUrl(defaults.serverUrl)
+        settingsRepository.setDefaultVideoQuality(defaults.defaultVideoQuality)
+        settingsRepository.setDefaultAudioFormat(defaults.defaultAudioFormat)
+        settingsRepository.setMaxConcurrentDownloads(defaults.maxConcurrentDownloads)
+        settingsRepository.setWifiOnly(defaults.wifiOnlyDownloading)
+        settingsRepository.setCustomDownloadDirectoryUri(null)
+    } }
+
     fun clearAllHistory() {
         viewModelScope.launch {
             getHistoryUseCase.clearAll()

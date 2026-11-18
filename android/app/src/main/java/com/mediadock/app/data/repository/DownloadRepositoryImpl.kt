@@ -289,6 +289,8 @@ class DownloadRepositoryImpl @Inject constructor(
                 format = download.selectedFormat,
                 totalBytes = download.fileSizeBytes
             )
+        } else if (download != null) {
+            downloadDao.updateStatus(jobId, "FAILED", error = "The file link is not ready. Retry this download.")
         }
     }
 
@@ -309,6 +311,9 @@ class DownloadRepositoryImpl @Inject constructor(
     override fun searchHistory(query: String): Flow<List<HistoryEntity>> = historyDao.searchHistory(query)
     override suspend fun deleteHistory(id: Long) = historyDao.delete(id)
     override suspend fun clearHistory() = historyDao.clearAll()
+    override suspend fun restoreHistory(items: List<HistoryEntity>) {
+        items.forEach { historyDao.insert(it) }
+    }
 
     private fun parseError(raw: String?, defaultMessage: String): String {
         if (raw.isNullOrBlank()) return defaultMessage

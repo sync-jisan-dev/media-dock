@@ -2,11 +2,12 @@ package com.mediadock.app.core.designsystem.components
 
 import com.mediadock.app.core.designsystem.icons.HugeIcons
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -17,10 +18,8 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -41,49 +40,51 @@ fun MediaDockBottomBar(
     activeDownloadsCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    Box(
-        modifier = modifier.padding(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 10.dp)
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
-        Surface(
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 5.dp,
-            modifier = Modifier.shadow(18.dp, RoundedCornerShape(24.dp), ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = .14f))
-        ) {
+        Column {
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             NavigationBar(
+                modifier = Modifier.heightIn(min = 80.dp).padding(horizontal = 8.dp),
                 containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.onSurface
+                contentColor = MaterialTheme.colorScheme.onSurface,
+                tonalElevation = 0.dp
             ) {
                 BottomNavItem.entries.forEach { item ->
                     val selected = currentRoute == item.route
-                    val scale by animateFloatAsState(
-                        if (selected) 1.08f else 1f,
-                        spring(dampingRatio = .72f, stiffness = 450f),
-                        label = "navScale"
-                    )
                     NavigationBarItem(
                         selected = selected,
-                        onClick = { if (!selected) onNavigateToRoute(item.route) },
+                        onClick = { onNavigateToRoute(item.route) },
                         icon = {
                             val iconContent: @Composable () -> Unit = {
-                                Icon(
-                                    item.icon,
-                                    contentDescription = stringResource(item.titleRes),
-                                    modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale }
-                                )
+                                Icon(item.icon, contentDescription = null, modifier = Modifier.size(24.dp))
                             }
                             if (item == BottomNavItem.DOWNLOADS && activeDownloadsCount > 0) {
                                 BadgedBox(badge = {
-                                    Badge(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
-                                        Text(activeDownloadsCount.coerceAtMost(99).toString())
+                                    Badge(
+                                        containerColor = MaterialTheme.colorScheme.onSurface,
+                                        contentColor = MaterialTheme.colorScheme.surface
+                                    ) {
+                                        Text(if (activeDownloadsCount > 99) "99+" else activeDownloadsCount.toString())
                                     }
                                 }) { iconContent() }
                             } else iconContent()
                         },
-                        label = { Text(stringResource(item.titleRes), style = MaterialTheme.typography.labelSmall, maxLines = 1) },
+                        label = {
+                            Text(
+                                stringResource(item.titleRes),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                                maxLines = 1
+                            )
+                        },
+                        alwaysShowLabel = true,
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.onSurface,
                             indicatorColor = MaterialTheme.colorScheme.primary,
                             unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant

@@ -69,4 +69,5 @@ class GetHistoryUseCase @Inject constructor(
     fun search(query: String): Flow<List<HistoryEntity>> = repository.searchHistory(query)
     suspend fun delete(id: Long) = repository.deleteHistory(id)
     suspend fun clearAll() = repository.clearHistory()
+    suspend fun restore(items: List<HistoryEntity>) = repository.restoreHistory(items)
 }

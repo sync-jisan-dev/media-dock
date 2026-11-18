@@ -93,12 +93,17 @@ class StorageManager @Inject constructor(
      * Finalizes MediaStore write by setting IS_PENDING = 0
      */
     fun finishMediaStoreEntry(itemUri: Uri) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && itemUri.authority == MediaStore.AUTHORITY) {
             val values = ContentValues().apply {
                 put(MediaStore.MediaColumns.IS_PENDING, 0)
             }
             context.contentResolver.update(itemUri, values, null, null)
         }
+    }
+
+    /** Called only for the incomplete output created by the current transfer. */
+    fun discardIncomplete(uri: Uri) {
+        runCatching { if (uri.scheme == "file") File(requireNotNull(uri.path)).delete() else context.contentResolver.delete(uri, null, null) }
     }
 
     private fun getNonCollidingFile(dir: File, filename: String): File {

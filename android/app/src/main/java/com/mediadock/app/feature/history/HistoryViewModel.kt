@@ -28,18 +28,11 @@ class HistoryViewModel @Inject constructor(
     private val _selectedMediaType = MutableStateFlow("ALL")
     val selectedMediaType: StateFlow<String> = _selectedMediaType.asStateFlow()
 
-    val historyItems: StateFlow<List<HistoryEntity>> = combine(
-        _searchQuery,
-        _selectedMediaType
-    ) { query, type ->
-        Pair(query, type)
-    }.flatMapLatest { (query, type) ->
-        val flow = if (query.isBlank()) getHistoryUseCase() else getHistoryUseCase.search(query.trim())
-        flow.combine(MutableStateFlow(type)) { list, filterType ->
-            if (filterType == "ALL") list
-            else list.filter { it.mediaType.equals(filterType, ignoreCase = true) }
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val historyItems = getHistoryUseCase()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    suspend fun removeItems(items: List<HistoryEntity>) { items.forEach { getHistoryUseCase.delete(it.id) } }
+    suspend fun restoreItems(items: List<HistoryEntity>) = getHistoryUseCase.restore(items)
 
     fun onSearchChange(query: String) {
         _searchQuery.value = query

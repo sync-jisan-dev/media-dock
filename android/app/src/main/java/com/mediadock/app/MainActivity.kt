@@ -9,6 +9,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +25,8 @@ import com.mediadock.app.core.designsystem.theme.MediaDockTheme
 import com.mediadock.app.domain.usecase.GetActiveDownloadsUseCase
 import com.mediadock.app.feature.navigation.MediaDockNavHost
 import com.mediadock.app.feature.navigation.Screen
+import com.mediadock.app.feature.navigation.navigateToTopLevel
+import com.mediadock.app.feature.navigation.topLevelRoutes
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -59,11 +62,8 @@ class MainActivity : ComponentActivity() {
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
 
-                val isRootScreen = currentRoute == Screen.Home.route ||
-                        currentRoute == Screen.Explore.route ||
-                        currentRoute == Screen.Downloads.route ||
-                        currentRoute == Screen.History.route ||
-                        currentRoute == Screen.Settings.route
+                LaunchedEffect(sharedUrl) { if (!sharedUrl.isNullOrBlank()) navController.navigateToTopLevel(Screen.Home.route) }
+                val isRootScreen = currentRoute in topLevelRoutes
 
                 val screenTitle = when (currentRoute) {
                     Screen.Home.route -> "MediaDock"
@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
                     Screen.History.route -> "My files"
                     Screen.Settings.route -> "My MediaDock"
                     Screen.Explore.route -> "Browse"
+                    Screen.SavedLinks.route -> "Saved links"
                     else -> "Download media"
                 }
 
@@ -90,11 +91,7 @@ class MainActivity : ComponentActivity() {
                             MediaDockBottomBar(
                                 currentRoute = currentRoute,
                                 onNavigateToRoute = { route ->
-                                    navController.navigate(route) {
-                                        popUpTo(Screen.Home.route) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                                    navController.navigateToTopLevel(route)
                                 },
                                 activeDownloadsCount = activeCount
                             )
@@ -104,7 +101,8 @@ class MainActivity : ComponentActivity() {
                     MediaDockNavHost(
                         navController = navController,
                         modifier = Modifier.padding(innerPadding),
-                        sharedUrl = sharedUrl
+                        sharedUrl = sharedUrl,
+                        onSharedUrlConsumed = { sharedUrl = null }
                     )
                 }
             }

@@ -1,5 +1,9 @@
 package com.mediadock.app.feature.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import com.mediadock.app.feature.workspace.SavedLinksScreen
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -26,27 +30,41 @@ fun MediaDockNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route,
-    sharedUrl: String? = null
+    sharedUrl: String? = null,
+    onSharedUrlConsumed: () -> Unit = {}
 ) {
     NavHost(
         navController = navController,
         startDestination = startDestination,
         modifier = modifier,
-        enterTransition = { MediaDockMotion.ScreenEnter },
-        exitTransition = { MediaDockMotion.ScreenExit },
-        popEnterTransition = { MediaDockMotion.ScreenPopEnter },
-        popExitTransition = { MediaDockMotion.ScreenPopExit }
+        enterTransition = {
+            if (initialState.destination.route in topLevelRoutes && targetState.destination.route in topLevelRoutes)
+                fadeIn(tween(150)) else MediaDockMotion.ScreenEnter
+        },
+        exitTransition = {
+            if (initialState.destination.route in topLevelRoutes && targetState.destination.route in topLevelRoutes)
+                fadeOut(tween(90)) else MediaDockMotion.ScreenExit
+        },
+        popEnterTransition = {
+            if (initialState.destination.route in topLevelRoutes && targetState.destination.route in topLevelRoutes)
+                fadeIn(tween(150)) else MediaDockMotion.ScreenPopEnter
+        },
+        popExitTransition = {
+            if (initialState.destination.route in topLevelRoutes && targetState.destination.route in topLevelRoutes)
+                fadeOut(tween(90)) else MediaDockMotion.ScreenPopExit
+        }
     ) {
         composable(Screen.Home.route) {
             val homeViewModel: HomeViewModel = hiltViewModel()
-            androidx.compose.runtime.LaunchedEffect(sharedUrl) { homeViewModel.handleSharedUrl(sharedUrl) }
+            androidx.compose.runtime.LaunchedEffect(sharedUrl) { if (sharedUrl != null) { homeViewModel.handleSharedUrl(sharedUrl); onSharedUrlConsumed() } }
             HomeScreen(
                 viewModel = homeViewModel,
                 onBrowse = { query ->
-                    if (query.isBlank()) navController.navigate(Screen.Explore.route)
+                    if (query.isBlank()) navController.navigateToTopLevel(Screen.Explore.route)
                     else navController.navigate(Screen.Browser.createRoute(query))
                 },
-                onLibrary = { navController.navigate(Screen.History.route) },
+                onSavedLinks = { navController.navigate(Screen.SavedLinks.route) },
+                onLibrary = { navController.navigateToTopLevel(Screen.History.route) },
                 onNavigateToInspect = { url ->
                     navController.navigate(Screen.MediaInspect.createRoute(url))
                 }
@@ -54,10 +72,10 @@ fun MediaDockNavHost(
         }
 
         composable(Screen.Explore.route) {
-            BrowserScreen(initialUrl = "", onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) })
+            BrowserScreen(initialUrl = "", onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) }, onSavedLinks = { navController.navigate(Screen.SavedLinks.route) })
         }
         composable(Screen.Browser.route, arguments = listOf(navArgument("url") { type = NavType.StringType })) { entry ->
-            BrowserScreen(initialUrl = entry.arguments?.getString("url").orEmpty(), onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) })
+            BrowserScreen(initialUrl = entry.arguments?.getString("url").orEmpty(), onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) }, onSavedLinks = { navController.navigate(Screen.SavedLinks.route) })
         }
 
         composable(
@@ -70,12 +88,10 @@ fun MediaDockNavHost(
             MediaInspectScreen(
                 viewModel = inspectViewModel,
                 onNavigateToDownloads = {
-                    navController.navigate(Screen.Downloads.route) {
-                        popUpTo(Screen.Home.route)
-                    }
+                    navController.navigateToTopLevel(Screen.Downloads.route)
                 },
                 onNavigateToSettings = {
-                    navController.navigate(Screen.Settings.route)
+                    navController.navigateToTopLevel(Screen.Settings.route)
                 }
             )
         }
@@ -85,19 +101,22 @@ fun MediaDockNavHost(
             DownloadsScreen(
                 viewModel = downloadsViewModel,
                 onNavigateHome = {
-                    navController.navigate(Screen.Home.route)
+                    navController.navigateToTopLevel(Screen.Home.route)
                 }
             )
         }
 
         composable(Screen.History.route) {
             val historyViewModel: HistoryViewModel = hiltViewModel()
-            HistoryScreen(viewModel = historyViewModel)
+            HistoryScreen(viewModel = historyViewModel, onBrowse = { navController.navigate(Screen.Browser.createRoute(it)) })
         }
 
+        composable(Screen.SavedLinks.route) {
+            SavedLinksScreen(onBrowse = { navController.navigate(Screen.Browser.createRoute(it)) }, onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) })
+        }
         composable(Screen.Settings.route) {
             val settingsViewModel: SettingsViewModel = hiltViewModel()
-            SettingsScreen(viewModel = settingsViewModel)
+            SettingsScreen(viewModel = settingsViewModel, onSavedLinks = { navController.navigate(Screen.SavedLinks.route) })
         }
     }
 }

@@ -32,6 +32,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.mediadock.app.feature.workspace.WorkspaceViewModel
+import com.mediadock.app.core.designsystem.components.StatTile
 import com.mediadock.app.R
 import com.mediadock.app.core.designsystem.theme.bouncyClickable
 import com.mediadock.app.domain.model.PlatformRegistry
@@ -42,28 +45,27 @@ fun HomeScreen(
     onNavigateToInspect: (String) -> Unit,
     onBrowse: (String) -> Unit,
     onLibrary: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSavedLinks: () -> Unit = {},
+    workspace: WorkspaceViewModel = hiltViewModel()
 ) {
+    val saved by workspace.state.collectAsState()
     val input by viewModel.urlInput.collectAsState()
     val error by viewModel.errorMessage.collectAsState()
     val recent by viewModel.recentDownloads.collectAsState()
     var category by rememberSaveable { mutableStateOf("All") }
-    val illustrationMotion = rememberInfiniteTransition(label = "illustrationFloat")
-    val illustrationOffset by illustrationMotion.animateFloat(
-        initialValue = -4f, targetValue = 4f,
-        animationSpec = infiniteRepeatable(tween(2400), RepeatMode.Reverse), label = "illustrationOffset"
-    )
     fun openInput() {
         val value = input.trim()
         if (value.startsWith("https://") || value.startsWith("http://")) {
-            if (viewModel.validateUrl()) onNavigateToInspect(value)
+            if (viewModel.validateUrl()) { viewModel.clearUrl(); onNavigateToInspect(value) }
         } else if (value.isNotBlank()) onBrowse(value)
     }
     LaunchedEffect(input) {
         if (com.mediadock.app.core.common.FormattingUtils.isValidUrl(input.trim())) {
             kotlinx.coroutines.delay(350)
-            onNavigateToInspect(input.trim())
+            val url = input.trim()
             viewModel.clearUrl()
+            onNavigateToInspect(url)
         }
     }
     LazyColumn(
@@ -97,25 +99,21 @@ fun HomeScreen(
             }
         }
         item {
-            Surface(shape = RoundedCornerShape(24.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                Row(Modifier.fillMaxWidth().heightIn(min = 170.dp).padding(end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f).padding(start = 20.dp, end = 12.dp, top = 20.dp, bottom = 20.dp)) {
-                        Text("Your media.\nOn your terms.", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Spacer(Modifier.height(8.dp))
-                        Text("Your favorite media,\nwherever you go.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
-                        Spacer(Modifier.height(12.dp))
-                        FilledTonalButton(
-                            onClick = { onBrowse("") },
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primary,
-                                contentColor = MaterialTheme.colorScheme.onPrimary
-                            )
-                        ) {
-                            Text("Explore now", fontWeight = FontWeight.SemiBold)
-                        }
+            Surface(shape = RoundedCornerShape(26.dp), color = MaterialTheme.colorScheme.primary) {
+                Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text("YOUR MEDIA SPACE", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .7f))
+                    Text("Save it.\nMake it yours.", style = MaterialTheme.typography.headlineLarge, color = MaterialTheme.colorScheme.onPrimary)
+                    Text("Bring your favorite links together. Keep the things you love close.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = .78f))
+                    Button(onClick = onSavedLinks, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.onPrimary, contentColor = MaterialTheme.colorScheme.primary)) {
+                        Icon(HugeIcons.FolderOpen, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Your saved links"); Spacer(Modifier.width(8.dp)); Icon(HugeIcons.ArrowForward, null, Modifier.size(18.dp))
                     }
-                    Image(painterResource(R.drawable.media_dock_hero), null, Modifier.size(112.dp).clip(RoundedCornerShape(20.dp)).graphicsLayer { translationY = illustrationOffset }, contentScale = ContentScale.Fit, colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }))
                 }
+            }
+        }
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(onClick = onSavedLinks, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp)) { StatTile(saved.links.size.toString(), "Saved links") }
+                Surface(onClick = onLibrary, modifier = Modifier.weight(1f), shape = RoundedCornerShape(18.dp)) { StatTile(saved.collections.size.toString(), "Collections") }
             }
         }
         item {

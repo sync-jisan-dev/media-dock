@@ -12,6 +12,8 @@ import com.mediadock.app.domain.usecase.DownloadImageUseCase
 import com.mediadock.app.domain.usecase.ExtractImagesUseCase
 import com.mediadock.app.domain.usecase.InspectMediaUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.mediadock.app.core.datastore.PreferencesDataStore
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,7 +34,8 @@ class MediaInspectViewModel @Inject constructor(
     private val inspectMediaUseCase: InspectMediaUseCase,
     private val extractImagesUseCase: ExtractImagesUseCase,
     private val createDownloadUseCase: CreateDownloadUseCase,
-    private val downloadImageUseCase: DownloadImageUseCase
+    private val downloadImageUseCase: DownloadImageUseCase,
+    private val preferences: PreferencesDataStore
 ) : ViewModel() {
 
     // Navigation has already decoded the route argument. Decoding again corrupts
@@ -118,10 +121,11 @@ class MediaInspectViewModel @Inject constructor(
 
             if (mediaRes is Resource.Success) {
                 val details = mediaRes.data
-                selectedVideoQuality.value = details.videoQualities.firstOrNull() ?: "highest"
+                val prefs = preferences.preferencesFlow.first()
+                selectedVideoQuality.value = details.videoQualities.firstOrNull { it == prefs.defaultVideoQuality } ?: details.videoQualities.firstOrNull() ?: "highest"
                 selectedVideoFormat.value = details.videoFormats.firstOrNull() ?: "mp4"
                 selectedAudioQuality.value = details.audioQualities.firstOrNull() ?: "best"
-                selectedAudioFormat.value = details.audioFormats.firstOrNull() ?: "mp3"
+                selectedAudioFormat.value = details.audioFormats.firstOrNull { it == prefs.defaultAudioFormat } ?: details.audioFormats.firstOrNull() ?: "mp3"
                 gifEndTime.value = (details.durationSeconds ?: 10L).coerceAtMost(15L)
             }
             _extractedImagesState.value = imagesDeferred.await()

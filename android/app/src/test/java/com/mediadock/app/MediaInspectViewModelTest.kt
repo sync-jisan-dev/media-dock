@@ -5,6 +5,10 @@ import com.mediadock.app.core.common.Resource
 import com.mediadock.app.domain.model.MediaDetails
 import com.mediadock.app.domain.usecase.*
 import com.mediadock.app.feature.media.MediaInspectViewModel
+import com.mediadock.app.core.datastore.PreferencesDataStore
+import com.mediadock.app.core.datastore.AppPreferences
+import io.mockk.every
+import kotlinx.coroutines.flow.flowOf
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -24,13 +28,14 @@ class MediaInspectViewModelTest {
     private val images = mockk<ExtractImagesUseCase>()
     private val create = mockk<CreateDownloadUseCase>()
     private val downloadImage = mockk<DownloadImageUseCase>()
+    private val preferences = mockk<PreferencesDataStore> { every { preferencesFlow } returns flowOf(AppPreferences()) }
     private val url = "https://example.com/video?token=a+b%2Fc"
     private val details = MediaDetails("1", "generic", url, "Video")
 
     @Before fun setup() { Dispatchers.setMain(dispatcher) }
     @After fun teardown() { Dispatchers.resetMain() }
 
-    private fun viewModel() = MediaInspectViewModel(SavedStateHandle(mapOf("url" to url)), inspect, images, create, downloadImage)
+    private fun viewModel() = MediaInspectViewModel(SavedStateHandle(mapOf("url" to url)), inspect, images, create, downloadImage, preferences)
 
     @Test fun preservesSignedUrlAndPublishesVideoBeforeGalleryFinishes() = runTest(dispatcher) {
         val galleryReady = CompletableDeferred<Unit>()
@@ -62,5 +67,23 @@ class MediaInspectViewModelTest {
         advanceUntilIdle()
         assertFalse(model.isSubmitting.value)
         assertEquals("Server unavailable", model.downloadError.value)
+    }
+
+    @Test fun appliesPreferredQualityAndAudioFormatOnlyWhenSupported() = runTest(dispatcher) {
+        every { preferences.preferencesFlow } returns flowOf(AppPreferences(defaultVideoQuality = "720p", defaultAudioFormat = "m4a"))
+        coEvery { inspect(url) } returns Resource.Success(details.copy(videoQualities = listOf("1080p", "720p", "360p"), audioFormats = listOf("mp3", "m4a")))
+        coEvery { images(url) } returns Resource.Success(emptyList())
+        val model = viewModel(); advanceUntilIdle()
+        assertEquals("720p", model.selectedVideoQuality.value)
+        assertEquals("m4a", model.selectedAudioFormat.value)
+    }
+
+    @Test fun unsupportedPreferencesFallBackToAvailableFormats() = runTest(dispatcher) {
+        every { preferences.preferencesFlow } returns flowOf(AppPreferences(defaultVideoQuality = "1080p", defaultAudioFormat = "flac"))
+        coEvery { inspect(url) } returns Resource.Success(details.copy(videoQualities = listOf("360p"), audioFormats = listOf("mp3")))
+        coEvery { images(url) } returns Resource.Success(emptyList())
+        val model = viewModel(); advanceUntilIdle()
+        assertEquals("360p", model.selectedVideoQuality.value)
+        assertEquals("mp3", model.selectedAudioFormat.value)
     }
 }

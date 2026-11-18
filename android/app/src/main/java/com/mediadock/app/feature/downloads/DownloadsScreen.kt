@@ -23,6 +23,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import com.mediadock.app.core.designsystem.components.StatTile
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -60,6 +69,17 @@ fun DownloadsScreen(
 ) {
     val downloads by viewModel.activeDownloads.collectAsState()
     val context = LocalContext.current
+    var search by remember { mutableStateOf("") }
+    var status by remember { mutableStateOf("All") }
+    val actionError by viewModel.actionError.collectAsState()
+    val busy by viewModel.busy.collectAsState()
+    val filtered = downloads.filter { (it.title.contains(search, true) || it.sourceUrl.contains(search, true)) && when (status) {
+        "Running" -> it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING)
+        "Paused" -> it.status == DownloadJobStatus.PAUSED
+        "Failed" -> it.status == DownloadJobStatus.FAILED
+        else -> true
+    } }
+
 
     if (downloads.isEmpty()) {
         MediaDockEmptyState(
@@ -98,11 +118,29 @@ fun DownloadsScreen(
                 }
             }
 
-            items(downloads, key = { it.jobId }) { item ->
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    StatTile(FormattingUtils.formatSpeed(downloads.filter { it.status == DownloadJobStatus.DOWNLOADING }.sumOf { it.speed }), "Total speed", Modifier.weight(1f))
+                    StatTile(FormattingUtils.formatBytes(downloads.sumOf { it.downloadedBytes }), "Transferred", Modifier.weight(1f))
+                }
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), placeholder = { Text("Search your queue") }, singleLine = true, leadingIcon = { Icon(HugeIcons.Search, null) }, shape = RoundedCornerShape(16.dp))
+                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("All", "Running", "Paused", "Failed").forEach { label -> FilterChip(status == label, { status = label }, { Text(label) }) }
+                }
+                Row(Modifier.horizontalScroll(rememberScrollState())) {
+                    TextButton(onClick = viewModel::pauseAll, enabled = !busy && downloads.any { it.status == DownloadJobStatus.DOWNLOADING }) { Text("Pause all") }
+                    TextButton(onClick = viewModel::resumeAll, enabled = !busy && downloads.any { it.status == DownloadJobStatus.PAUSED }) { Text("Resume all") }
+                    TextButton(onClick = viewModel::retryFailed, enabled = !busy && downloads.any { it.status == DownloadJobStatus.FAILED }) { Text("Retry failed") }
+                }
+                if (actionError != null) Text(actionError!!, style = MaterialTheme.typography.bodySmall)
+                if (filtered.isEmpty()) Text("No downloads match this filter.", style = MaterialTheme.typography.bodyMedium)
+            }
+            items(filtered, key = { it.jobId }) { item ->
                 DownloadItemCard(
                     item = item,
                     onPause = { viewModel.pauseDownload(item.jobId) },
-                    onResume = { viewModel.resumeDownload(item.jobId) },
+                    onResume = { if (item.status == DownloadJobStatus.FAILED) viewModel.retryDownload(item) else viewModel.resumeDownload(item.jobId) },
                     onCancel = { viewModel.cancelDownload(item.jobId) },
                     onDelete = { viewModel.deleteDownload(item.jobId) },
                     onOpen = {
@@ -234,6 +272,7 @@ private fun DownloadItemCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            if (item.status == DownloadJobStatus.PAUSED) Text("Resuming restarts this file transfer from the beginning.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             // Progress Metrics & Controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -252,32 +291,35 @@ private fun DownloadItemCard(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     when (item.status) {
-                        DownloadJobStatus.DOWNLOADING, DownloadJobStatus.PROCESSING -> {
-                            IconButton(onClick = onPause, modifier = Modifier.bouncyClickable(onClick = onPause)) {
+                        DownloadJobStatus.DOWNLOADING -> {
+                            IconButton(onClick = onPause) {
                                 Icon(imageVector = HugeIcons.Pause, contentDescription = "Pause", tint = MaterialTheme.colorScheme.primary)
                             }
-                            IconButton(onClick = onCancel, modifier = Modifier.bouncyClickable(onClick = onCancel)) {
+                            IconButton(onClick = onCancel) {
                                 Icon(imageVector = HugeIcons.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error)
                             }
                         }
                         DownloadJobStatus.PAUSED -> {
-                            IconButton(onClick = onResume, modifier = Modifier.bouncyClickable(onClick = onResume)) {
+                            IconButton(onClick = onResume) {
                                 Icon(imageVector = HugeIcons.PlayArrow, contentDescription = "Resume", tint = MaterialTheme.colorScheme.primary)
                             }
-                            IconButton(onClick = onCancel, modifier = Modifier.bouncyClickable(onClick = onCancel)) {
+                            IconButton(onClick = onCancel) {
                                 Icon(imageVector = HugeIcons.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error)
                             }
                         }
+                        DownloadJobStatus.PROCESSING, DownloadJobStatus.QUEUED, DownloadJobStatus.PENDING -> {
+                            IconButton(onClick = onCancel) { Icon(HugeIcons.Cancel, "Cancel processing") }
+                        }
                         DownloadJobStatus.COMPLETED -> {
-                            IconButton(onClick = onOpen, modifier = Modifier.bouncyClickable(onClick = onOpen)) {
+                            IconButton(onClick = onOpen) {
                                 Icon(imageVector = HugeIcons.FileOpen, contentDescription = "Open", tint = MaterialTheme.colorScheme.primary)
                             }
-                            IconButton(onClick = onShare, modifier = Modifier.bouncyClickable(onClick = onShare)) {
+                            IconButton(onClick = onShare) {
                                 Icon(imageVector = HugeIcons.Share, contentDescription = "Share", tint = MaterialTheme.colorScheme.primary)
                             }
                         }
                         DownloadJobStatus.FAILED -> {
-                            IconButton(onClick = onResume, modifier = Modifier.bouncyClickable(onClick = onResume)) {
+                            IconButton(onClick = onResume) {
                                 Icon(imageVector = HugeIcons.PlayArrow, contentDescription = "Retry", tint = MaterialTheme.colorScheme.primary)
                             }
                         }
