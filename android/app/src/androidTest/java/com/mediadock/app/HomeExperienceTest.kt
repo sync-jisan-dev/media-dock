@@ -23,14 +23,10 @@ class HomeExperienceTest {
         compose.runOnIdle { assertEquals("https://example.com/video", requested) }
         compose.onNodeWithText("Good finds.").assertDoesNotExist()
     }
-    @Test fun waitingGameRespondsWithoutPretendingToAdvanceTheDownload() {
+    @Test fun preparationScreenDisplaysPhaseAndTipsWithoutGame() {
         compose.setContent { MediaDockTheme { MediaPreparationScreen(sourceUrl = "https://example.com/video") } }
         compose.onNodeWithText("Finding your media").assertExists()
-        compose.onNodeWithContentDescription("Snake game board").assertExists()
-        compose.onNodeWithText("Start Snake").performScrollTo().performClick()
-        compose.onNodeWithText("Pause Snake").performScrollTo().performClick()
-        compose.onNodeWithText("Restart").performScrollTo().performClick()
-        compose.onNodeWithText("Start Snake").assertExists()
-        compose.onNodeWithText("Finding your media").assertExists()
+        compose.onNodeWithText("While you wait").assertExists()
+        compose.onNodeWithContentDescription("Snake game board").assertDoesNotExist()
     }
 }
