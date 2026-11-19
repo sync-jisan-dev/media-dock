@@ -66,7 +66,7 @@ class DownloadTransferEngine @Inject constructor(
             var responseBody: ResponseBody? = null
 
             try {
-                ForegroundTransferService.startService(context, title)
+                ForegroundTransferService.startService(context, jobId, title)
                 downloadDao.updateStatus(jobId, "QUEUED")
                 var prefs = preferencesDataStore.preferencesFlow.first()
                 while (!slots.tryAcquire(prefs.maxConcurrentDownloads)) {
@@ -151,10 +151,12 @@ class DownloadTransferEngine @Inject constructor(
                         )
 
                         ForegroundTransferService.updateProgress(
-                            context,
-                            title,
-                            progressPercent.toInt(),
-                            FormattingUtils.formatSpeed(speedBytesPerSec)
+                            context = context,
+                            jobId = jobId,
+                            title = title,
+                            progress = progressPercent.toInt(),
+                            statusText = "Downloading",
+                            speed = FormattingUtils.formatSpeed(speedBytesPerSec)
                         )
 
                         lastProgressUpdate = now
@@ -175,6 +177,7 @@ class DownloadTransferEngine @Inject constructor(
                     localUri = targetUri.toString()
                 )
                 downloadDao.updateProgress(jobId, 100f, 0L, 0L, totalRead)
+                ForegroundTransferService.completeDownload(context, jobId, title)
 
                 // Add to History
                 historyDao.insert(
@@ -192,8 +195,12 @@ class DownloadTransferEngine @Inject constructor(
 
             } catch (e: Exception) {
                 withContext(NonCancellable) {
-                    if (e is CancellationException) downloadDao.updateStatus(jobId, if (pauseRequests.remove(jobId) == true) "PAUSED" else "CANCELLED")
-                    else downloadDao.updateStatus(jobId, "FAILED", error = e.localizedMessage ?: "Download error")
+                    if (e is CancellationException) {
+                        downloadDao.updateStatus(jobId, if (pauseRequests.remove(jobId) == true) "PAUSED" else "CANCELLED")
+                    } else {
+                        downloadDao.updateStatus(jobId, "FAILED", error = e.localizedMessage ?: "Download error")
+                        ForegroundTransferService.failDownload(context, jobId, title, e.localizedMessage ?: "Download error")
+                    }
                 }
             } finally {
                 try { inputStream?.close() } catch (_: Exception) {}

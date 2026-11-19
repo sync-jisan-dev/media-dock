@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.mediadock.app.core.common.FormattingUtils
 import com.mediadock.app.core.datastore.WorkspaceRules
 import com.mediadock.app.core.database.entity.HistoryEntity
+import com.mediadock.app.data.remote.dto.CreateDownloadRequestDto
+import com.mediadock.app.domain.usecase.CreateDownloadUseCase
 import com.mediadock.app.domain.usecase.GetHistoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -16,12 +18,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val getHistoryUseCase: GetHistoryUseCase
+    private val getHistoryUseCase: GetHistoryUseCase,
+    private val createDownloadUseCase: CreateDownloadUseCase? = null
 ) : ViewModel() {
 
     private val _urlInput = MutableStateFlow("")
@@ -65,6 +69,18 @@ class HomeViewModel @Inject constructor(
     fun clearUrl() {
         _urlInput.value = ""
         _errorMessage.value = null
+    }
+
+    fun startDownload(url: String) {
+        val clean = url.trim()
+        if (!WorkspaceRules.validUrl(clean)) return
+        viewModelScope.launch {
+            createDownloadUseCase?.invoke(
+                CreateDownloadRequestDto(clean, "video"),
+                com.mediadock.app.feature.browser.BrowserRules.displayHost(clean).ifBlank { "Media Download" },
+                null
+            )
+        }
     }
 
     fun pasteFromClipboard() {

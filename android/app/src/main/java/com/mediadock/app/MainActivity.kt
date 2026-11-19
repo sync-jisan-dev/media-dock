@@ -45,10 +45,17 @@ class MainActivity : ComponentActivity() {
     lateinit var getActiveDownloadsUseCase: GetActiveDownloadsUseCase
 
     private var sharedUrl by mutableStateOf<String?>(null)
+    private var openQueueRequested by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+            }
+        }
 
         handleIncomingIntent(intent)
 
@@ -68,6 +75,12 @@ class MainActivity : ComponentActivity() {
                 val currentRoute = navBackStackEntry?.destination?.route
 
                 LaunchedEffect(sharedUrl) { if (!sharedUrl.isNullOrBlank()) navController.navigateToTopLevel(Screen.Home.route) }
+                LaunchedEffect(openQueueRequested) {
+                    if (openQueueRequested) {
+                        openQueueRequested = false
+                        navController.navigateToTopLevel(Screen.Downloads.route)
+                    }
+                }
                 val isRootScreen = currentRoute in topLevelRoutes
                 val pageColor = if (currentRoute == Screen.Home.route || currentRoute == Screen.Explore.route || currentRoute == Screen.Browser.route) browserPageColor() else androidx.compose.material3.MaterialTheme.colorScheme.background
                 val navBarColor = if (isRootScreen) com.mediadock.app.core.designsystem.theme.CpdColor.bgCanvasDefault else pageColor
@@ -114,6 +127,9 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
+        if (intent.getBooleanExtra("openQueue", false)) {
+            openQueueRequested = true
+        }
         val action = intent.action
         val type = intent.type
 

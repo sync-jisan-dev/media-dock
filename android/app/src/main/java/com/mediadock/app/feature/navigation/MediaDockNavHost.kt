@@ -64,19 +64,39 @@ fun MediaDockNavHost(
                     else navController.navigate(Screen.Browser.createRoute(query))
                 },
                 onSavedLinks = { navController.navigate(Screen.SavedLinks.route) },
-                onQuickDownload = { navController.navigate(Screen.MediaInspect.createRoute(it, quick = true)) },
+                onQuickDownload = { url ->
+                    homeViewModel.startDownload(url)
+                    navController.navigateToTopLevel(Screen.Downloads.route)
+                },
                 onLibrary = { navController.navigateToTopLevel(Screen.History.route) },
                 onNavigateToInspect = { url ->
-                    navController.navigate(Screen.MediaInspect.createRoute(url))
+                    homeViewModel.startDownload(url)
+                    navController.navigateToTopLevel(Screen.Downloads.route)
                 }
             )
         }
 
         composable(Screen.Explore.route) {
-            BrowserScreen(initialUrl = "", onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) }, onSavedLinks = { navController.navigate(Screen.SavedLinks.route) })
+            val downloadsViewModel: DownloadsViewModel = hiltViewModel()
+            BrowserScreen(
+                initialUrl = "",
+                onDownload = { url ->
+                    downloadsViewModel.startDownload(url)
+                    navController.navigateToTopLevel(Screen.Downloads.route)
+                },
+                onSavedLinks = { navController.navigate(Screen.SavedLinks.route) }
+            )
         }
         composable(Screen.Browser.route, arguments = listOf(navArgument("url") { type = NavType.StringType })) { entry ->
-            BrowserScreen(initialUrl = entry.arguments?.getString("url").orEmpty(), onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) }, onSavedLinks = { navController.navigate(Screen.SavedLinks.route) })
+            val downloadsViewModel: DownloadsViewModel = hiltViewModel()
+            BrowserScreen(
+                initialUrl = entry.arguments?.getString("url").orEmpty(),
+                onDownload = { url ->
+                    downloadsViewModel.startDownload(url)
+                    navController.navigateToTopLevel(Screen.Downloads.route)
+                },
+                onSavedLinks = { navController.navigate(Screen.SavedLinks.route) }
+            )
         }
 
         composable(

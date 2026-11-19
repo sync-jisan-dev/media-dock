@@ -54,13 +54,13 @@ import com.mediadock.app.domain.model.PlatformRegistry
     LaunchedEffect(input) {
         if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(input.trim())) {
             kotlinx.coroutines.delay(350)
-            val url = input.trim(); focusManager.clearFocus(); keyboard?.hide(); viewModel.clearUrl(); onNavigateToInspect(url)
+            val url = input.trim(); focusManager.clearFocus(); keyboard?.hide(); viewModel.clearUrl(); onQuickDownload(url)
         }
     }
     HomeLanding(input, error, suggestion, viewModel::onUrlChange, viewModel::pasteFromClipboard,
         onSearch = {
             val value = input.trim()
-            if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(value)) { viewModel.clearUrl(); onNavigateToInspect(value) }
+            if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(value)) { viewModel.clearUrl(); onQuickDownload(value) }
             else if (value.isNotBlank()) onBrowse(value)
         },
         onSuggestion = { url -> viewModel.dismissClipboardSuggestion(); onQuickDownload(url) },

@@ -73,25 +73,6 @@ fun DownloadsScreen(
     var status by remember { mutableStateOf("All") }
     val actionError by viewModel.actionError.collectAsState()
     val busy by viewModel.busy.collectAsState()
-    var waitingJob by remember { mutableStateOf<String?>(null) }
-    var shownJobs by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(arrayListOf<String>()) }
-    androidx.compose.runtime.LaunchedEffect(downloads) {
-        val next = downloads.firstOrNull { it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING) && it.jobId !in shownJobs }
-        if (waitingJob != null && downloads.none { it.jobId == waitingJob && it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING) }) waitingJob = null
-        if (next != null) {
-            shownJobs = ArrayList((shownJobs + downloads.map { it.jobId }).distinct())
-            if (waitingJob == null) waitingJob = next.jobId
-        }
-    }
-    val waitingDownload = downloads.find { it.jobId == waitingJob && it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING) }
-    if (waitingDownload != null) androidx.compose.ui.window.Dialog(onDismissRequest = { waitingJob = null }, properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-            Box {
-                com.mediadock.app.feature.media.MediaPreparationScreen(phase = if (waitingDownload.downloadedBytes > 0) "Saving your media" else "Preparing your download", sourceUrl = waitingDownload.sourceUrl, progress = waitingDownload.progress.takeIf { waitingDownload.downloadedBytes > 0 && waitingDownload.status == DownloadJobStatus.DOWNLOADING })
-                IconButton(onClick = { waitingJob = null }, Modifier.align(Alignment.TopEnd).padding(12.dp)) { Icon(HugeIcons.Close, "Close waiting screen") }
-            }
-        }
-    }
     val filtered = downloads.filter { (it.title.contains(search, true) || it.sourceUrl.contains(search, true)) && when (status) {
         "Running" -> it.status in setOf(DownloadJobStatus.PENDING, DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING)
         "Paused" -> it.status == DownloadJobStatus.PAUSED
@@ -156,9 +137,6 @@ fun DownloadsScreen(
                 if (filtered.isEmpty()) Text("No downloads match this filter.", style = MaterialTheme.typography.bodyMedium)
             }
             items(filtered, key = { it.jobId }) { item ->
-                if (item.status in setOf(DownloadJobStatus.QUEUED, DownloadJobStatus.PROCESSING, DownloadJobStatus.DOWNLOADING)) {
-                    TextButton(onClick = { waitingJob = item.jobId }) { Icon(HugeIcons.PlayCircle, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Pass the time while we prepare") }
-                }
                 DownloadItemCard(
                     item = item,
                     onPause = { viewModel.pauseDownload(item.jobId) },
@@ -292,14 +270,34 @@ private fun DownloadItemCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    if (item.speed > 0) {
-                        Text(
-                            text = "${FormattingUtils.formatSpeed(item.speed)} • ${FormattingUtils.formatDuration(item.eta)} left",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
+                    val statusText = when (item.status) {
+                        DownloadJobStatus.PROCESSING -> {
+                            when {
+                                item.progress < 20f -> "Connecting to media server…"
+                                item.progress < 40f -> "Waking cloud engine…"
+                                item.progress < 60f -> "Extracting media streams…"
+                                item.progress < 80f -> "Optimizing stream format…"
+                                else -> "Preparing high-speed download…"
+                            }
+                        }
+                        DownloadJobStatus.QUEUED, DownloadJobStatus.PENDING -> "Queued for transfer…"
+                        DownloadJobStatus.DOWNLOADING -> {
+                            if (item.speed > 0) "${FormattingUtils.formatSpeed(item.speed)} • ${FormattingUtils.formatDuration(item.eta)} left"
+                            else "Receiving media packets…"
+                        }
+                        DownloadJobStatus.PAUSED -> "Transfer paused"
+                        DownloadJobStatus.COMPLETED -> "Saved to device • Ready to open"
+                        DownloadJobStatus.FAILED -> item.error ?: "Download failed • Tap retry"
+                        DownloadJobStatus.CANCELLED -> "Transfer cancelled"
                     }
+                    Text(
+                        text = statusText,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (item.status == DownloadJobStatus.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {

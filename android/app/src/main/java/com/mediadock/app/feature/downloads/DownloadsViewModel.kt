@@ -29,6 +29,11 @@ import javax.inject.Inject
     fun resumeDownload(id: String) = action { manageDownloadUseCase.resume(id) }
     fun cancelDownload(id: String) = action { manageDownloadUseCase.cancel(id) }
     fun deleteDownload(id: String) = action { manageDownloadUseCase.delete(id) }
+    fun startDownload(url: String, title: String = "") = viewModelScope.launch {
+        val clean = url.trim()
+        val safeTitle = title.ifBlank { com.mediadock.app.feature.browser.BrowserRules.displayHost(clean).ifBlank { "Media Download" } }
+        createDownloadUseCase(CreateDownloadRequestDto(clean, "video"), safeTitle, null)
+    }
     private suspend fun retry(item: ActiveDownload) {
         if (item.mediaType == "gif") { actionError.value = "Open the source again to choose the GIF clip range."; return }
         val result = if (item.mediaType == "image") imageDownloadUseCase(item.sourceUrl, item.title, item.format)
