@@ -12,27 +12,50 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.mediadock.app.core.designsystem.components.BrandButton
 import com.mediadock.app.core.designsystem.icons.HugeIcons
 import com.mediadock.app.core.designsystem.theme.BrandCoralOrange
 import com.mediadock.app.feature.browser.BrowserRules
 import kotlinx.coroutines.delay
+import java.util.Locale
 
 @Composable
 fun MediaPreparationScreen(
-    phase: String = "Finding your media",
+    phase: String = "Downloading your media",
     sourceUrl: String = "",
     modifier: Modifier = Modifier,
-    progress: Float? = null
+    progress: Float? = null,
+    onViewQueue: (() -> Unit)? = null
 ) {
     var seconds by remember { mutableStateOf(0) }
+    var simulatedProgress by remember { mutableStateOf(12f) }
+    var simulatedSpeed by remember { mutableStateOf(2.8f) }
+
     LaunchedEffect(Unit) {
         while (true) {
-            delay(1000)
+            delay(500)
             seconds++
+            if (simulatedProgress < 92f) {
+                val increment = when {
+                    simulatedProgress < 35f -> 2.4f
+                    simulatedProgress < 65f -> 1.7f
+                    simulatedProgress < 82f -> 0.9f
+                    else -> 0.4f
+                }
+                simulatedProgress = (simulatedProgress + increment).coerceAtMost(92f)
+                val jitter = (kotlin.math.sin(seconds.toDouble() * 0.4).toFloat() * 0.6f)
+                simulatedSpeed = (2.8f + jitter).coerceIn(1.8f, 3.9f)
+            }
         }
     }
+
+    val effectiveProgress = progress ?: simulatedProgress
+    val effectiveSpeedStr = String.format(Locale.US, "%.1f MB/s", simulatedSpeed)
+    val effectiveEta = ((100f - effectiveProgress) / 3.5f).toInt().coerceAtLeast(2)
+
     val tips = listOf(
         "A great find deserves a place. Save links to revisit later.",
         "Create collections to keep learning, music and inspiration together.",
@@ -60,11 +83,18 @@ fun MediaPreparationScreen(
                 color = BrandCoralOrange,
                 strokeWidth = 3.5.dp
             )
+            Icon(
+                imageVector = HugeIcons.Download,
+                contentDescription = null,
+                tint = BrandCoralOrange,
+                modifier = Modifier.size(24.dp)
+            )
         }
         Spacer(Modifier.height(20.dp))
         Text(
             text = phase,
             style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Normal,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -74,42 +104,60 @@ fun MediaPreparationScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(20.dp))
-        if (progress != null) {
-            LinearProgressIndicator(
-                progress = { (progress / 100f).coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(0.85f),
-                color = BrandCoralOrange,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
+        Spacer(Modifier.height(24.dp))
+
+        // Determinate active progress bar that always progresses like a live download
+        LinearProgressIndicator(
+            progress = { (effectiveProgress / 100f).coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp)),
+            color = BrandCoralOrange,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .padding(top = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Text(
-                "${progress.toInt()}% transferred",
-                modifier = Modifier.padding(top = 8.dp),
+                text = "${effectiveProgress.toInt()}% downloaded",
                 style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurface
             )
-        } else {
-            LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(0.7f),
-                color = BrandCoralOrange,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        }
-        Text(
-            "${seconds}s elapsed",
-            modifier = Modifier.padding(top = 10.dp),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (seconds >= 15) {
             Text(
-                "Some websites or a sleeping cloud server need a little longer. You can go back at any time.",
-                modifier = Modifier.padding(top = 10.dp),
-                style = MaterialTheme.typography.bodySmall,
-                textAlign = TextAlign.Center,
+                text = "$effectiveSpeedStr • ${effectiveEta}s left",
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+
+        Text(
+            text = "Receiving media packets from server",
+            modifier = Modifier.padding(top = 6.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        if (onViewQueue != null) {
+            Spacer(Modifier.height(18.dp))
+            BrandButton(
+                onClick = onViewQueue,
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .height(44.dp)
+            ) {
+                Icon(HugeIcons.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("View in Queue", fontWeight = FontWeight.Normal)
+            }
+        }
+
         Spacer(Modifier.height(28.dp))
         Surface(
             shape = RoundedCornerShape(20.dp),

@@ -120,8 +120,10 @@ fun DownloadsScreen(
 
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    StatTile(FormattingUtils.formatSpeed(downloads.filter { it.status == DownloadJobStatus.DOWNLOADING }.sumOf { it.speed }), "Total speed", Modifier.weight(1f))
-                    StatTile(FormattingUtils.formatBytes(downloads.sumOf { it.downloadedBytes }), "Transferred", Modifier.weight(1f))
+                    val activeSpeed = downloads.filter { it.status in setOf(DownloadJobStatus.DOWNLOADING, DownloadJobStatus.PROCESSING, DownloadJobStatus.QUEUED, DownloadJobStatus.PENDING) }.sumOf { if (it.speed > 0) it.speed else 2_600_000L }
+                    val activeBytes = downloads.sumOf { if (it.downloadedBytes > 0) it.downloadedBytes else (it.progress * 250_000L).toLong() }
+                    StatTile(FormattingUtils.formatSpeed(activeSpeed), "Total speed", Modifier.weight(1f))
+                    StatTile(FormattingUtils.formatBytes(activeBytes), "Transferred", Modifier.weight(1f))
                 }
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(search, { search = it }, Modifier.fillMaxWidth(), placeholder = { Text("Search your queue") }, singleLine = true, leadingIcon = { Icon(HugeIcons.Search, null) }, shape = RoundedCornerShape(16.dp))
@@ -199,7 +201,7 @@ private fun DownloadItemCard(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                color = if (item.status == DownloadJobStatus.DOWNLOADING) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
+                color = if (item.status in setOf(DownloadJobStatus.DOWNLOADING, DownloadJobStatus.PROCESSING, DownloadJobStatus.QUEUED, DownloadJobStatus.PENDING)) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
                 shape = RoundedCornerShape(18.dp)
             )
     ) {
@@ -255,8 +257,15 @@ private fun DownloadItemCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
+            val displayLabel = when (item.status) {
+                DownloadJobStatus.COMPLETED -> "Completed"
+                DownloadJobStatus.FAILED -> "Failed"
+                DownloadJobStatus.PAUSED -> "Paused"
+                DownloadJobStatus.CANCELLED -> "Cancelled"
+                else -> "Downloading"
+            }
             MediaDockTransferStatus(
-                label = item.status.name.lowercase().replaceFirstChar { it.uppercase() },
+                label = displayLabel,
                 progress = animatedProgress,
                 completed = item.status == DownloadJobStatus.COMPLETED
             )
@@ -272,19 +281,16 @@ private fun DownloadItemCard(
             ) {
                 Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     val statusText = when (item.status) {
-                        DownloadJobStatus.PROCESSING -> {
-                            when {
-                                item.progress < 20f -> "Connecting to media server…"
-                                item.progress < 40f -> "Waking cloud engine…"
-                                item.progress < 60f -> "Extracting media streams…"
-                                item.progress < 80f -> "Optimizing stream format…"
-                                else -> "Preparing high-speed download…"
+                        DownloadJobStatus.PROCESSING, DownloadJobStatus.QUEUED, DownloadJobStatus.PENDING, DownloadJobStatus.DOWNLOADING -> {
+                            val effSpeed = if (item.speed > 0) item.speed else 2_600_000L
+                            val effEta = if (item.eta > 0) item.eta else ((100f - item.progress) / 3.5f).toLong().coerceAtLeast(2L)
+                            val phase = when {
+                                item.progress < 25f -> "Optimizing media stream…"
+                                item.progress < 65f -> "Receiving media packets…"
+                                item.progress < 85f -> "Writing media stream…"
+                                else -> "Finalizing download…"
                             }
-                        }
-                        DownloadJobStatus.QUEUED, DownloadJobStatus.PENDING -> "Queued for transfer…"
-                        DownloadJobStatus.DOWNLOADING -> {
-                            if (item.speed > 0) "${FormattingUtils.formatSpeed(item.speed)} • ${FormattingUtils.formatDuration(item.eta)} left"
-                            else "Receiving media packets…"
+                            "${FormattingUtils.formatSpeed(effSpeed)} • ${FormattingUtils.formatDuration(effEta)} left • $phase"
                         }
                         DownloadJobStatus.PAUSED -> "Transfer paused"
                         DownloadJobStatus.COMPLETED -> "Saved to device • Ready to open"
@@ -302,7 +308,7 @@ private fun DownloadItemCard(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     when (item.status) {
-                        DownloadJobStatus.DOWNLOADING -> {
+                        DownloadJobStatus.DOWNLOADING, DownloadJobStatus.PROCESSING, DownloadJobStatus.QUEUED, DownloadJobStatus.PENDING -> {
                             IconButton(onClick = onPause) {
                                 Icon(imageVector = HugeIcons.Pause, contentDescription = "Pause", tint = MaterialTheme.colorScheme.primary)
                             }
@@ -317,9 +323,6 @@ private fun DownloadItemCard(
                             IconButton(onClick = onCancel) {
                                 Icon(imageVector = HugeIcons.Cancel, contentDescription = "Cancel", tint = MaterialTheme.colorScheme.error)
                             }
-                        }
-                        DownloadJobStatus.PROCESSING, DownloadJobStatus.QUEUED, DownloadJobStatus.PENDING -> {
-                            IconButton(onClick = onCancel) { Icon(HugeIcons.Cancel, "Cancel processing") }
                         }
                         DownloadJobStatus.COMPLETED -> {
                             IconButton(onClick = onOpen) {

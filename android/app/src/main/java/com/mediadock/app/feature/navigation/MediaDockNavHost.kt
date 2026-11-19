@@ -134,7 +134,14 @@ fun MediaDockNavHost(
         }
 
         composable(Screen.SavedLinks.route) {
-            SavedLinksScreen(onBrowse = { navController.navigate(Screen.Browser.createRoute(it)) }, onDownload = { navController.navigate(Screen.MediaInspect.createRoute(it)) })
+            val downloadsViewModel: DownloadsViewModel = hiltViewModel()
+            SavedLinksScreen(
+                onBrowse = { navController.navigate(Screen.Browser.createRoute(it)) },
+                onDownload = { url ->
+                    downloadsViewModel.startDownload(url)
+                    navController.navigateToTopLevel(Screen.Downloads.route)
+                }
+            )
         }
         composable(Screen.Settings.route) {
             val settingsViewModel: SettingsViewModel = hiltViewModel()

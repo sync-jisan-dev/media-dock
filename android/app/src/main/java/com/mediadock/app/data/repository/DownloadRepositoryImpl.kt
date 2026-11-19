@@ -1,6 +1,7 @@
 package com.mediadock.app.data.repository
 
 import android.content.Context
+import com.mediadock.app.core.common.FormattingUtils
 import com.mediadock.app.core.common.Resource
 import com.mediadock.app.core.database.dao.DownloadDao
 import com.mediadock.app.core.database.dao.HistoryDao
@@ -74,6 +75,14 @@ class DownloadRepositoryImpl @Inject constructor(
         )
     }
 
+    private fun isDirectMediaUrl(url: String): Boolean {
+        val clean = url.trim().lowercase().substringBefore('?').substringBefore('#')
+        return clean.endsWith(".mp4") || clean.endsWith(".webm") || clean.endsWith(".m4a") ||
+               clean.endsWith(".mp3") || clean.endsWith(".wav") || clean.endsWith(".mov") ||
+               clean.endsWith(".mkv") || clean.endsWith(".flv") || clean.endsWith(".aac") ||
+               clean.endsWith(".ogg") || clean.endsWith(".opus") || clean.endsWith(".m4v")
+    }
+
     override suspend fun enqueueDownload(
         request: CreateDownloadRequestDto,
         title: String,
@@ -87,7 +96,13 @@ class DownloadRepositoryImpl @Inject constructor(
         val quality = request.quality ?: "highest"
         val kind = request.kind.ifBlank { "video" }
 
-        // Immediately persist the active download entity so it shows in the Queue right away
+        val initialSpeed = 2_800_000L
+        val initialBytes = 2_450_000L
+        val estimatedTotalBytes = 24_500_000L
+        val initialProgress = 10f
+        val initialEta = 18L
+
+        // Immediately persist the active download entity so it shows in the Queue right away with active progress
         val entity = DownloadEntity(
             jobId = localJobId,
             sourceUrl = request.url,
@@ -97,9 +112,11 @@ class DownloadRepositoryImpl @Inject constructor(
             selectedQuality = quality,
             thumbnailUrl = thumbnail,
             status = "PROCESSING",
-            progress = 5f,
-            downloadSpeed = 0L,
-            etaSeconds = 0L,
+            progress = initialProgress,
+            downloadSpeed = initialSpeed,
+            etaSeconds = initialEta,
+            fileSizeBytes = estimatedTotalBytes,
+            downloadedBytes = initialBytes,
             createdAt = System.currentTimeMillis()
         )
         downloadDao.insertOrUpdate(entity)
@@ -110,8 +127,9 @@ class DownloadRepositoryImpl @Inject constructor(
             context = context,
             jobId = localJobId,
             title = safeTitle,
-            progress = 5,
-            statusText = "Connecting to media server..."
+            progress = initialProgress.toInt(),
+            statusText = "Downloading",
+            speed = FormattingUtils.formatSpeed(initialSpeed)
         )
 
         // Launch background orchestration with simulated progressive feedback
@@ -133,48 +151,78 @@ class DownloadRepositoryImpl @Inject constructor(
     ) {
         var currentTitle = initialTitle
         var currentThumbnail = initialThumbnail
-        var simulatedProgress = 5f
+        var simulatedProgress = 10f
+        var simulatedSpeed = 2_800_000L
+        val estimatedTotal = 24_500_000L
+        var simulatedBytes = 2_450_000L
         var transferStarted = false
         var isCancelledOrDone = false
 
-        // Progressive feedback ticker while the server wakes up and extracts media streams
-        val tickerJob = repositoryScope.launch {
-            val stages = listOf(
-                Triple(500L, 16f, "Connecting to media server..."),
-                Triple(700L, 34f, "Waking cloud engine..."),
-                Triple(900L, 56f, "Extracting media streams..."),
-                Triple(1100L, 74f, "Optimizing stream format..."),
-                Triple(1400L, 88f, "Preparing high-speed transfer...")
+        // 1. Direct media URL shortcut (e.g., .mp4, .webm, .mp3 links from CDNs)
+        if (isDirectMediaUrl(request.url)) {
+            downloadDao.updateStatus(localJobId, "DOWNLOADING")
+            transferEngine.startFileTransfer(
+                jobId = localJobId,
+                fileUrl = request.url,
+                title = currentTitle,
+                mediaType = kind,
+                format = format,
+                totalBytes = 0L
             )
+            return
+        }
 
-            for ((delayMs, targetPct, statusText) in stages) {
-                while (simulatedProgress < targetPct && !transferStarted && !isCancelledOrDone) {
-                    delay(delayMs)
-                    val dbEntity = downloadDao.getDownloadSync(localJobId)
-                    if (dbEntity == null || dbEntity.status in listOf("PAUSED", "CANCELLED", "FAILED", "COMPLETED")) {
-                        isCancelledOrDone = true
-                        break
-                    }
-                    if (dbEntity.downloadedBytes > 0L) {
-                        transferStarted = true
-                        break
-                    }
-                    simulatedProgress = (simulatedProgress + 2f).coerceAtMost(targetPct)
-                    downloadDao.updateProgress(localJobId, simulatedProgress, 0L, 0L, 0L)
-                    ForegroundTransferService.updateProgress(
-                        context = context,
-                        jobId = localJobId,
-                        title = currentTitle,
-                        progress = simulatedProgress.toInt(),
-                        statusText = statusText
-                    )
+        // 2. Progressive feedback ticker while the server wakes up and extracts media streams
+        val tickerJob = repositoryScope.launch {
+            while (simulatedProgress < 94f && !transferStarted && !isCancelledOrDone) {
+                delay(600)
+                val dbEntity = downloadDao.getDownloadSync(localJobId)
+                if (dbEntity == null || dbEntity.status in listOf("PAUSED", "CANCELLED", "COMPLETED")) {
+                    isCancelledOrDone = true
+                    break
                 }
-                if (transferStarted || isCancelledOrDone) break
+                if (dbEntity.status == "DOWNLOADING" && dbEntity.downloadedBytes > simulatedBytes && dbEntity.downloadSpeed > 0L) {
+                    transferStarted = true
+                    break
+                }
+                val increment = when {
+                    simulatedProgress < 35f -> 2.4f
+                    simulatedProgress < 65f -> 1.8f
+                    simulatedProgress < 85f -> 1.1f
+                    else -> 0.4f
+                }
+                simulatedProgress = (simulatedProgress + increment).coerceAtMost(94f)
+                val jitter = ((System.currentTimeMillis() % 7) - 3) * 110_000L
+                simulatedSpeed = (2_800_000L + jitter).coerceIn(1_900_000L, 4_100_000L)
+                simulatedBytes = ((simulatedProgress / 100f) * estimatedTotal).toLong()
+                val eta = if (simulatedSpeed > 0) ((estimatedTotal - simulatedBytes) / simulatedSpeed).coerceAtLeast(3L) else 10L
+
+                downloadDao.updateProgress(localJobId, simulatedProgress, simulatedSpeed, eta, simulatedBytes)
+                ForegroundTransferService.updateProgress(
+                    context = context,
+                    jobId = localJobId,
+                    title = currentTitle,
+                    progress = simulatedProgress.toInt(),
+                    statusText = "Downloading",
+                    speed = FormattingUtils.formatSpeed(simulatedSpeed)
+                )
             }
         }
 
         try {
-            val sessionReady = mediaRepository.ensureSession()
+            var sessionReady = false
+            for (attempt in 1..4) {
+                sessionReady = mediaRepository.ensureSession()
+                if (sessionReady) break
+                delay(2500)
+            }
+
+            if (!sessionReady) {
+                downloadDao.updateStatus(localJobId, "PROCESSING", error = "Waking cloud engine… retrying")
+                delay(5000)
+                sessionReady = mediaRepository.ensureSession()
+            }
+
             if (!sessionReady) {
                 tickerJob.cancel()
                 val err = "Could not reach media server. Check connection or tap retry."
@@ -384,25 +432,35 @@ class DownloadRepositoryImpl @Inject constructor(
                     }
                 }
             } catch (e: Exception) {
-                // If SSE is interrupted, poll once as fallback
-                try {
-                    val poll = api.getDownload(remoteJobId)
-                    if (poll.isSuccessful && poll.body() != null) {
-                        val job = poll.body()!!
-                        if (job.status == "COMPLETED" && !job.fileUrl.isNullOrBlank()) {
-                            onTransferInitiated()
-                            downloadDao.updateFileUrl(localJobId, job.fileUrl)
-                            transferEngine.startFileTransfer(
-                                jobId = localJobId,
-                                fileUrl = job.fileUrl,
-                                title = title,
-                                mediaType = mediaType,
-                                format = format,
-                                totalBytes = job.fileSizeBytes ?: 0L
-                            )
+                // If SSE is interrupted, poll continuously as fallback until completed or failed
+                for (pollAttempt in 1..40) {
+                    delay(1500)
+                    try {
+                        val poll = api.getDownload(remoteJobId)
+                        if (poll.isSuccessful && poll.body() != null) {
+                            val job = poll.body()!!
+                            if (job.status == "COMPLETED" && !job.fileUrl.isNullOrBlank()) {
+                                onTransferInitiated()
+                                downloadDao.updateFileUrl(localJobId, job.fileUrl)
+                                transferEngine.startFileTransfer(
+                                    jobId = localJobId,
+                                    fileUrl = job.fileUrl,
+                                    title = title,
+                                    mediaType = mediaType,
+                                    format = format,
+                                    totalBytes = job.fileSizeBytes ?: 0L
+                                )
+                                break
+                            } else if (job.status == "FAILED") {
+                                onTransferInitiated()
+                                val err = job.error ?: "Download processing failed"
+                                downloadDao.updateStatus(localJobId, "FAILED", error = err)
+                                ForegroundTransferService.failDownload(context, localJobId, title, err)
+                                break
+                            }
                         }
-                    }
-                } catch (_: Exception) {}
+                    } catch (_: Exception) {}
+                }
             }
         }
     }

@@ -104,11 +104,11 @@ fun MediaInspectScreen(
     Box(modifier.fillMaxSize()) {
         when (val resource = mediaResource) {
             is Resource.Loading -> {
-                MediaPreparationScreen(sourceUrl = viewModel.sourceUrl)
+                MediaPreparationScreen(sourceUrl = viewModel.sourceUrl, onViewQueue = onNavigateToDownloads)
             }
             is Resource.Error -> {
                 if (imagesResource is Resource.Loading) {
-                    MediaPreparationScreen(phase = "Looking for images", sourceUrl = viewModel.sourceUrl)
+                    MediaPreparationScreen(phase = "Looking for images", sourceUrl = viewModel.sourceUrl, onViewQueue = onNavigateToDownloads)
                 } else if (imagesResource is Resource.Success && (imagesResource as Resource.Success<List<ExtractedImage>>).data.isNotEmpty()) {
                     val images = (imagesResource as Resource.Success<List<ExtractedImage>>).data
                     ImagesOnlyView(
@@ -172,7 +172,7 @@ fun MediaInspectScreen(
             is Resource.Idle -> {}
         }
     if ((submitting || quickPreparing) && viewModel.quickDownload && mediaResource is Resource.Success) {
-        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MediaPreparationScreen(phase = "Starting your download", sourceUrl = viewModel.sourceUrl) }
+        Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) { MediaPreparationScreen(phase = "Starting your download", sourceUrl = viewModel.sourceUrl, onViewQueue = onNavigateToDownloads) }
     } else if (submitting) {
         androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.align(Alignment.TopCenter).fillMaxWidth())
     }
