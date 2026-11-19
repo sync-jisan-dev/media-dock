@@ -53,6 +53,12 @@ data class BrowserSession(val tabs: List<BrowserTab> = emptyList(), val activeId
         session.value = current.copy(tabs = remaining, activeId = if (current.activeId == id) remaining[index.coerceAtMost(remaining.lastIndex)].id else current.activeId)
         persist()
     }
+    fun closeAllTabs() {
+        bundles.clear()
+        val fresh = BrowserTab()
+        session.value = session.value.copy(tabs = listOf(fresh), activeId = fresh.id)
+        persist()
+    }
     fun saveWebState(id: String, bundle: Bundle, scrollY: Int) {
         if (session.value.tabs.none { it.id == id }) return
         bundles[id] = bundle
