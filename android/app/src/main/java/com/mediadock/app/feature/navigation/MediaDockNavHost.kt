@@ -64,14 +64,12 @@ fun MediaDockNavHost(
                     else navController.navigate(Screen.Browser.createRoute(query))
                 },
                 onSavedLinks = { navController.navigate(Screen.SavedLinks.route) },
-                onQuickDownload = { url ->
-                    homeViewModel.startDownload(url)
+                onQuickDownload = { _ ->
                     navController.navigateToTopLevel(Screen.Downloads.route)
                 },
                 onLibrary = { navController.navigateToTopLevel(Screen.History.route) },
                 onNavigateToInspect = { url ->
-                    homeViewModel.startDownload(url)
-                    navController.navigateToTopLevel(Screen.Downloads.route)
+                    navController.navigate(Screen.MediaInspect.createRoute(url))
                 }
             )
         }

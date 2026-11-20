@@ -94,6 +94,15 @@ class DownloadRepositoryImpl @Inject constructor(
         title: String,
         thumbnail: String?
     ): Resource<String> = withContext(Dispatchers.IO) {
+        val trimmedSourceUrl = request.url.trim()
+        val existingActive = downloadDao.getActiveDownloadsList().firstOrNull {
+            it.sourceUrl.trim().equals(trimmedSourceUrl, ignoreCase = true) &&
+                (it.status == "PENDING" || it.status == "QUEUED" || it.status == "PROCESSING" || it.status == "DOWNLOADING")
+        }
+        if (existingActive != null) {
+            return@withContext Resource.Success(existingActive.jobId)
+        }
+
         val localJobId = "job_" + System.currentTimeMillis() + "_" + (1000..9999).random()
         val cleanUrl = request.url.trim().lowercase().substringBefore('?').substringBefore('#')
         val safeTitle = title.ifBlank {
@@ -361,6 +370,15 @@ class DownloadRepositoryImpl @Inject constructor(
         title: String?,
         format: String?
     ): Resource<String> = withContext(Dispatchers.IO) {
+        val trimmedUrl = url.trim()
+        val existingActive = downloadDao.getActiveDownloadsList().firstOrNull {
+            it.sourceUrl.trim().equals(trimmedUrl, ignoreCase = true) &&
+                (it.status == "PENDING" || it.status == "QUEUED" || it.status == "PROCESSING" || it.status == "DOWNLOADING")
+        }
+        if (existingActive != null) {
+            return@withContext Resource.Success(existingActive.jobId)
+        }
+
         val localJobId = "img_" + System.currentTimeMillis() + "_" + (1000..9999).random()
         val safeTitle = title?.ifBlank { null } ?: "Image Download"
         val fmt = format ?: "jpg"

@@ -48,6 +48,9 @@ class HomeViewModel @Inject constructor(
     val aiDetection = MutableStateFlow<AiLinkIntel?>(null)
     val duplicateWarning = MutableStateFlow<AiDuplicateReport?>(null)
 
+    private var lastEnqueuedUrl: String? = null
+    private var lastEnqueuedTimestamp: Long = 0L
+
     /** Called only while Home has window focus. No network request is made here. */
     fun refreshClipboardSuggestion() {
         val text = runCatching {
@@ -140,6 +143,13 @@ class HomeViewModel @Inject constructor(
     fun startAiOptimizedDownload(url: String) {
         val clean = url.trim()
         if (!WorkspaceRules.validUrl(clean)) return
+        val now = System.currentTimeMillis()
+        if (clean.equals(lastEnqueuedUrl, ignoreCase = true) && (now - lastEnqueuedTimestamp) < 1500L) {
+            return
+        }
+        lastEnqueuedUrl = clean
+        lastEnqueuedTimestamp = now
+
         val intel = aiDetection.value ?: aiAgent.analyzeFast(clean)
         addRecentSearch(intel.cleanTitle)
         val kind = when (intel.category) {
@@ -162,6 +172,13 @@ class HomeViewModel @Inject constructor(
     fun startDownloadWithPreset(url: String, preset: String) {
         val clean = url.trim()
         if (!WorkspaceRules.validUrl(clean)) return
+        val now = System.currentTimeMillis()
+        if (clean.equals(lastEnqueuedUrl, ignoreCase = true) && (now - lastEnqueuedTimestamp) < 1500L) {
+            return
+        }
+        lastEnqueuedUrl = clean
+        lastEnqueuedTimestamp = now
+
         addRecentSearch(com.mediadock.app.feature.browser.BrowserRules.displayHost(clean))
         val isAudio = preset == "mp3"
         val kind = if (isAudio) "audio" else "video"
