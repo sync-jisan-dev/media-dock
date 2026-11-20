@@ -106,6 +106,60 @@ class StorageManager @Inject constructor(
         runCatching { if (uri.scheme == "file") File(requireNotNull(uri.path)).delete() else context.contentResolver.delete(uri, null, null) }
     }
 
+    /** Permanently deletes the media file from disk and MediaStore so it is removed from the gallery. */
+    fun deleteMediaFile(uri: Uri): Boolean {
+        var deleted = false
+        try {
+            if (uri.scheme == "file") {
+                val file = File(uri.path ?: "")
+                if (file.exists()) {
+                    deleted = file.delete()
+                }
+            } else if (uri.scheme == "content") {
+                try {
+                    val count = context.contentResolver.delete(uri, null, null)
+                    if (count > 0) deleted = true
+                } catch (e: Exception) {
+                    try {
+                        val doc = DocumentFile.fromSingleUri(context, uri)
+                        if (doc != null && doc.exists()) {
+                            deleted = doc.delete()
+                        }
+                    } catch (_: Exception) {}
+                }
+                // Also query the underlying physical path if MediaStore column _data is present
+                try {
+                    val proj = arrayOf(MediaStore.MediaColumns.DATA)
+                    context.contentResolver.query(uri, proj, null, null, null)?.use { cursor ->
+                        if (cursor.moveToFirst()) {
+                            val dataIndex = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                            if (dataIndex >= 0) {
+                                val filePath = cursor.getString(dataIndex)
+                                if (!filePath.isNullOrBlank()) {
+                                    val physicalFile = File(filePath)
+                                    if (physicalFile.exists()) {
+                                        physicalFile.delete()
+                                        deleted = true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (_: Exception) {}
+            }
+        } catch (_: Exception) {}
+
+        // Always notify MediaScanner so the system gallery immediately updates
+        try {
+            val path = uri.path
+            if (!path.isNullOrBlank()) {
+                android.media.MediaScannerConnection.scanFile(context, arrayOf(path), null, null)
+            }
+        } catch (_: Exception) {}
+
+        return deleted
+    }
+
     private fun getNonCollidingFile(dir: File, filename: String): File {
         var file = File(dir, filename)
         if (!file.exists()) return file

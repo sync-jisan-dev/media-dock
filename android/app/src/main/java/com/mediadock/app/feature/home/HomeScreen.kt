@@ -12,9 +12,11 @@ import com.mediadock.app.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,6 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.mediadock.app.core.ai.AiAgentStats
+import com.mediadock.app.core.ai.AiDuplicateReport
+import com.mediadock.app.core.ai.AiLinkIntel
 import com.mediadock.app.core.designsystem.components.AsciiHeroAnimation
 import com.mediadock.app.core.designsystem.components.BrandButton
 import com.mediadock.app.core.designsystem.components.CompoundSecondaryButton
@@ -47,33 +52,200 @@ import com.mediadock.app.domain.model.PlatformRegistry
     val input by viewModel.urlInput.collectAsState()
     val error by viewModel.errorMessage.collectAsState()
     val suggestion by viewModel.clipboardSuggestion.collectAsState()
+    val preset by viewModel.selectedPreset.collectAsState()
+    val latency by viewModel.cloudLatencyMs.collectAsState()
+    val recentSearches by viewModel.recentSearches.collectAsState()
+    val aiStats by viewModel.aiStats.collectAsState()
+    val aiDetection by viewModel.aiDetection.collectAsState()
+    val duplicateWarning by viewModel.duplicateWarning.collectAsState()
     val focused = LocalWindowInfo.current.isWindowFocused
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+
+    var batchDialogOpen by remember { mutableStateOf(false) }
+    var batchText by remember { mutableStateOf("") }
+    var utilityDialogTitle by remember { mutableStateOf<String?>(null) }
+    var utilityDialogPrompt by remember { mutableStateOf("") }
+
     LaunchedEffect(focused) { if (focused) { kotlinx.coroutines.delay(250); viewModel.refreshClipboardSuggestion() } }
-    LaunchedEffect(input) {
-        if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(input.trim())) {
-            kotlinx.coroutines.delay(350)
-            val url = input.trim(); focusManager.clearFocus(); keyboard?.hide(); viewModel.clearUrl(); onQuickDownload(url)
-        }
+
+    if (batchDialogOpen) {
+        val extractedBatch = com.mediadock.app.core.datastore.WorkspaceRules.extractLinks(batchText)
+        AlertDialog(
+            onDismissRequest = { batchDialogOpen = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(HugeIcons.Download, null, tint = CpdColor.CoralRest, modifier = Modifier.size(22.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Batch Multi-Download", style = MaterialTheme.typography.titleMedium)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Paste up to 50 URLs (one per line or mixed in text). All valid media links will be queued.", style = MaterialTheme.typography.bodySmall, color = CpdColor.textSecondary)
+                    OutlinedTextField(
+                        value = batchText,
+                        onValueChange = { batchText = it },
+                        modifier = Modifier.fillMaxWidth().height(160.dp),
+                        placeholder = { Text("https://youtube.com/...\nhttps://instagram.com/...\nhttps://tiktok.com/...") },
+                        shape = RoundedCornerShape(CpdRadius.radiusMd)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(shape = RoundedCornerShape(CpdRadius.radiusFull), color = CpdColor.CoralRest.copy(alpha = 0.15f)) {
+                            Text("${extractedBatch.size} links found", Modifier.padding(horizontal = CpdSpace.space2x, vertical = CpdSpace.space1x), style = MaterialTheme.typography.labelSmall, color = CpdColor.CoralRest)
+                        }
+                        TextButton(onClick = { viewModel.pasteFromClipboard() }) {
+                            Text("Paste clipboard", color = CpdColor.CoralRest)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                BrandButton(
+                    onClick = {
+                        if (extractedBatch.isNotEmpty()) {
+                            viewModel.startBatchDownload(extractedBatch, preset)
+                            batchDialogOpen = false
+                            batchText = ""
+                            onQuickDownload(extractedBatch.first())
+                        }
+                    },
+                    enabled = extractedBatch.isNotEmpty()
+                ) {
+                    Text("Download all (${extractedBatch.size})")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { batchDialogOpen = false }) { Text("Cancel") }
+            }
+        )
     }
-    HomeLanding(input, error, suggestion, viewModel::onUrlChange, viewModel::pasteFromClipboard,
+
+    if (utilityDialogTitle != null) {
+        AlertDialog(
+            onDismissRequest = { utilityDialogTitle = null },
+            title = { Text(utilityDialogTitle.orEmpty()) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Enter target media URL for ${utilityDialogTitle?.lowercase()}:", style = MaterialTheme.typography.bodySmall)
+                    OutlinedTextField(
+                        value = utilityDialogPrompt,
+                        onValueChange = { utilityDialogPrompt = it },
+                        modifier = Modifier.fillMaxWidth().height(CpdSize.inputHeight),
+                        singleLine = true,
+                        placeholder = { Text("https://...") },
+                        shape = RoundedCornerShape(CpdRadius.radiusMd)
+                    )
+                }
+            },
+            confirmButton = {
+                BrandButton(
+                    onClick = {
+                        val clean = utilityDialogPrompt.trim()
+                        if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(clean)) {
+                            val targetPreset = if (utilityDialogTitle?.contains("Audio", true) == true) "mp3" else preset
+                            viewModel.startDownloadWithPreset(clean, targetPreset)
+                            utilityDialogTitle = null
+                            utilityDialogPrompt = ""
+                            onQuickDownload(clean)
+                        }
+                    },
+                    enabled = com.mediadock.app.core.datastore.WorkspaceRules.validUrl(utilityDialogPrompt.trim())
+                ) {
+                    Text("Start")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { utilityDialogTitle = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    HomeLanding(
+        input = input,
+        error = error,
+        suggestion = suggestion,
+        preset = preset,
+        latency = latency,
+        recentSearches = recentSearches,
+        aiStats = aiStats,
+        aiDetection = aiDetection,
+        duplicateWarning = duplicateWarning,
+        onInput = viewModel::onUrlChange,
+        onClearInput = viewModel::clearUrl,
+        onPaste = viewModel::pasteFromClipboard,
+        onSelectPreset = { viewModel.selectedPreset.value = it },
+        onBatchOpen = { batchDialogOpen = true },
+        onUtilityOpen = { title -> utilityDialogTitle = title; utilityDialogPrompt = "" },
         onSearch = {
             val value = input.trim()
-            if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(value)) { viewModel.clearUrl(); onQuickDownload(value) }
-            else if (value.isNotBlank()) onBrowse(value)
+            if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(value)) {
+                viewModel.clearUrl()
+                viewModel.startDownloadWithPreset(value, preset)
+                onQuickDownload(value)
+            } else if (value.isNotBlank()) {
+                viewModel.addRecentSearch(value)
+                onBrowse(value)
+            }
         },
-        onSuggestion = { url -> viewModel.dismissClipboardSuggestion(); onQuickDownload(url) },
+        onQuickAiDownload = { url ->
+            viewModel.clearUrl()
+            viewModel.startAiOptimizedDownload(url)
+            onQuickDownload(url)
+        },
+        onSelectRecent = { query ->
+            if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(query)) {
+                viewModel.startDownloadWithPreset(query, preset)
+                onQuickDownload(query)
+            } else {
+                viewModel.onUrlChange(query)
+            }
+        },
+        onSuggestion = { url ->
+            viewModel.dismissClipboardSuggestion()
+            viewModel.startDownloadWithPreset(url, preset)
+            onQuickDownload(url)
+        },
         onDismissSuggestion = viewModel::dismissClipboardSuggestion,
-        onBrowse = onBrowse, onSavedLinks = onSavedLinks, onLibrary = onLibrary, modifier = modifier)
+        onBrowse = onBrowse,
+        onSavedLinks = onSavedLinks,
+        onLibrary = onLibrary,
+        modifier = modifier
+    )
 }
 
 @Composable fun HomeLanding(
-    input: String, error: String?, suggestion: String?, onInput: (String) -> Unit,
-    onPaste: () -> Unit, onSearch: () -> Unit, onSuggestion: (String) -> Unit,
-    onDismissSuggestion: () -> Unit, onBrowse: (String) -> Unit,
-    onSavedLinks: () -> Unit, onLibrary: () -> Unit, modifier: Modifier = Modifier
+    input: String,
+    error: String?,
+    suggestion: String?,
+    preset: String,
+    latency: Long?,
+    recentSearches: List<String>,
+    aiStats: AiAgentStats,
+    aiDetection: AiLinkIntel?,
+    duplicateWarning: AiDuplicateReport?,
+    onInput: (String) -> Unit,
+    onClearInput: () -> Unit,
+    onPaste: () -> Unit,
+    onSelectPreset: (String) -> Unit,
+    onBatchOpen: () -> Unit,
+    onUtilityOpen: (String) -> Unit,
+    onSearch: () -> Unit,
+    onQuickAiDownload: (String) -> Unit,
+    onSelectRecent: (String) -> Unit,
+    onSuggestion: (String) -> Unit,
+    onDismissSuggestion: () -> Unit,
+    onBrowse: (String) -> Unit,
+    onSavedLinks: () -> Unit,
+    onLibrary: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    var platformCategory by remember { mutableStateOf("All") }
+
     BoxWithConstraints(modifier.fillMaxSize().background(CpdColor.bgCanvasDefault)) {
         val contentHeight = maxHeight
         Column(
@@ -81,24 +253,24 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .heightIn(min = contentHeight)
-                .padding(horizontal = CpdSpace.space6x, vertical = CpdSpace.space5x),
+                .padding(horizontal = CpdSpace.space6x, vertical = CpdSpace.space4x),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Hero Wordmark with Ambient Borderless ASCII Wave & Brand Color Tint
+
+
+            // Hero Wordmark with Ambient Borderless ASCII Wave
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(116.dp),
+                    .height(110.dp),
                 contentAlignment = Alignment.Center
             ) {
-                // Background interactive ASCII animation (subtle & fading into canvas all around)
                 AsciiHeroAnimation(
                     modifier = Modifier.fillMaxSize(),
                     isDark = CpdColor.isDark,
                     interactive = true
                 )
-                // Wordmark in MediaDock signature coral-orange brand color
                 Image(
                     painter = painterResource(if (CpdColor.isDark) R.drawable.mediadock_wordmark_dark else R.drawable.mediadock_wordmark_light),
                     contentDescription = "MediaDock",
@@ -109,32 +281,73 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 )
             }
 
-            Spacer(Modifier.height(CpdSpace.space6x))
+            Spacer(Modifier.height(CpdSpace.space3x))
 
-            // Search / Paste Input styled with Compound Tokens
+            // AI Brain Autonomous Core Status
+            Surface(
+                shape = RoundedCornerShape(CpdRadius.radiusFull),
+                color = CpdColor.bgSubtleSecondary,
+                border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
+                modifier = Modifier.padding(bottom = CpdSpace.space2x)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(7.dp)
+                            .clip(CircleShape)
+                            .background(CpdColor.CoralRest)
+                    )
+                    Text(
+                        "AI Agent Online",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = CpdColor.CoralRest
+                    )
+                    Text("•", style = MaterialTheme.typography.labelSmall, color = CpdColor.textDisabled)
+                    Text(
+                        "Superfast Link Detection (<1ms)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CpdColor.textSecondary
+                    )
+                }
+            }
+
+            // Search / Paste Input
             OutlinedTextField(
                 value = input,
                 onValueChange = onInput,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(CpdSpace.space14x),
+                    .height(CpdSize.inputHeight),
                 singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(color = CpdColor.textPrimary),
                 placeholder = {
                     Text(
-                        "Search or paste a media link",
+                        "Search or paste media link",
                         style = MaterialTheme.typography.bodyMedium,
                         color = CpdColor.textDisabled
                     )
                 },
                 leadingIcon = {
-                    Icon(HugeIcons.Search, contentDescription = null, tint = CpdColor.textSecondary)
+                    Icon(HugeIcons.Search, contentDescription = null, modifier = Modifier.size(CpdSize.iconMd), tint = CpdColor.textSecondary)
                 },
                 trailingIcon = {
-                    IconButton(onClick = onPaste) {
-                        Icon(HugeIcons.ContentPaste, contentDescription = "Paste link", tint = CpdColor.CoralRest)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (input.isNotBlank()) {
+                            IconButton(onClick = onClearInput) {
+                                Icon(HugeIcons.Close, contentDescription = "Clear", tint = CpdColor.textSecondary)
+                            }
+                        }
+                        IconButton(onClick = onPaste) {
+                            Icon(HugeIcons.ContentPaste, contentDescription = "Paste link", tint = CpdColor.CoralRest)
+                        }
                     }
                 },
-                shape = RoundedCornerShape(CpdRadius.radiusXl),
+                shape = RoundedCornerShape(CpdRadius.radiusMd),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedContainerColor = CpdColor.bgSubtleSecondary,
                     focusedContainerColor = CpdColor.bgSubtleSecondary,
@@ -159,8 +372,187 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 )
             }
 
-            // Compound Tier 1 Action Button (The Premium CTA)
-            if (input.isNotBlank()) {
+            // Real-time AI Brain Link Intelligence & Duplicate Guard
+            AnimatedVisibility(
+                visible = aiDetection != null,
+                enter = fadeIn(tween(180)) + slideInVertically { -12 },
+                exit = fadeOut(tween(120)) + slideOutVertically { -12 }
+            ) {
+                if (aiDetection != null) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = CpdSpace.space2x)
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(CpdRadius.radiusLg),
+                            color = CpdColor.bgSubtleSecondary,
+                            border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.CoralRest.copy(alpha = 0.45f))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(CpdSpace.space4x),
+                                verticalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(CpdSpace.space15x)
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(CpdRadius.radiusFull),
+                                            color = CpdColor.CoralRest.copy(alpha = 0.18f)
+                                        ) {
+                                            Text(
+                                                aiDetection.platform.name.replace("_", " "),
+                                                modifier = Modifier.padding(horizontal = CpdSpace.space2x, vertical = CpdSpace.space05x),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = CpdColor.CoralRest
+                                            )
+                                        }
+                                        Surface(
+                                            shape = RoundedCornerShape(CpdRadius.radiusFull),
+                                            color = CpdColor.borderInteractiveSecondary.copy(alpha = 0.4f)
+                                        ) {
+                                            Text(
+                                                aiDetection.category.name,
+                                                modifier = Modifier.padding(horizontal = CpdSpace.space2x, vertical = CpdSpace.space05x),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = CpdColor.textSecondary
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        aiDetection.summaryBadge,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = CpdColor.CoralRest,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+
+                                Text(
+                                    aiDetection.cleanTitle,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = CpdColor.textPrimary,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Surface(shape = RoundedCornerShape(CpdRadius.radiusSm), color = CpdColor.bgCanvasDefault) {
+                                        Text(
+                                            "Format: .${aiDetection.suggestedFormat}",
+                                            modifier = Modifier.padding(horizontal = CpdSpace.space15x, vertical = CpdSpace.space05x),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = CpdColor.textSecondary
+                                        )
+                                    }
+                                    Surface(shape = RoundedCornerShape(CpdRadius.radiusSm), color = CpdColor.bgCanvasDefault) {
+                                        Text(
+                                            "Quality: ${aiDetection.suggestedQuality}",
+                                            modifier = Modifier.padding(horizontal = CpdSpace.space15x, vertical = CpdSpace.space05x),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = CpdColor.textSecondary
+                                        )
+                                    }
+                                    if (aiDetection.isDirectDownload) {
+                                        Surface(shape = RoundedCornerShape(CpdRadius.radiusSm), color = CpdColor.CoralRest.copy(alpha = 0.2f)) {
+                                            Text(
+                                                "⚡ Direct Link Ready",
+                                                modifier = Modifier.padding(horizontal = CpdSpace.space15x, vertical = CpdSpace.space05x),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = CpdColor.CoralRest
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (duplicateWarning?.isDuplicate == true) {
+                                    Surface(
+                                        shape = RoundedCornerShape(CpdRadius.radiusMd),
+                                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
+                                        border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, MaterialTheme.colorScheme.error.copy(alpha = 0.4f)),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(CpdSpace.space2x),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
+                                        ) {
+                                            Icon(HugeIcons.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(CpdSize.iconSm))
+                                            Text(
+                                                duplicateWarning?.message.orEmpty(),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    }
+                                }
+
+                                BrandButton(
+                                    onClick = { onQuickAiDownload(input) },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(CpdSize.buttonLarge)
+                                ) {
+                                    Icon(HugeIcons.Download, null, Modifier.size(CpdSize.iconMd))
+                                    Spacer(Modifier.width(CpdSpace.space2x))
+                                    Text(
+                                        "⚡ AI Fast Download (${aiDetection.suggestedFormat.uppercase()})",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Quick Format & Quality Presets (1080p, 720p, 360p, MP3 Audio)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = CpdSpace.space2x)
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Quality:", style = MaterialTheme.typography.labelSmall, color = CpdColor.textSecondary)
+                val presets = listOf("highest" to "1080p / 4K", "720p" to "720p HD", "360p" to "360p Fast", "mp3" to "MP3 Audio")
+                presets.forEach { (key, label) ->
+                    FilterChip(
+                        selected = preset == key,
+                        onClick = { onSelectPreset(key) },
+                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = CpdColor.CoralRest,
+                            selectedLabelColor = BrandWhite,
+                            containerColor = CpdColor.bgSubtleSecondary,
+                            labelColor = CpdColor.textSecondary
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = preset == key,
+                            borderColor = if (preset == key) CpdColor.CoralRest else CpdColor.borderInteractiveSecondary
+                        )
+                    )
+                }
+            }
+
+            // Primary Download CTA when input is typed and AI detection not showing
+            if (input.isNotBlank() && aiDetection == null) {
                 BrandButton(
                     onClick = onSearch,
                     modifier = Modifier
@@ -170,11 +562,11 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 ) {
                     Icon(HugeIcons.Download, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(CpdSpace.space2x))
-                    Text("Find media or search", fontWeight = FontWeight.Normal)
+                    Text("Download media or search", fontWeight = FontWeight.Normal)
                 }
             }
 
-            // Copied Link Suggestion Card (Framer-motion spring transition)
+            // Copied Link Suggestion Card
             AnimatedVisibility(
                 visible = suggestion != null,
                 enter = MediaDockMotion.CardEnter,
@@ -182,40 +574,40 @@ import com.mediadock.app.domain.model.PlatformRegistry
             ) {
                 if (suggestion != null) {
                     Column {
-                        Spacer(Modifier.height(CpdSpace.space4x))
+                        Spacer(Modifier.height(CpdSpace.space3x))
                         Surface(
-                            shape = RoundedCornerShape(CpdRadius.radiusXl),
+                            shape = RoundedCornerShape(CpdRadius.radiusLg),
                             color = CpdColor.bgSubtleSecondary,
                             border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary)
                         ) {
                             Column(Modifier.fillMaxWidth().padding(CpdSpace.space4x)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(HugeIcons.ContentPaste, null, Modifier.size(20.dp), tint = CpdColor.CoralRest)
+                                    Icon(HugeIcons.ContentPaste, null, Modifier.size(CpdSize.iconMd), tint = CpdColor.CoralRest)
                                     Text(
-                                        "Is this the link you copied?",
+                                        "Copied link detected",
                                         Modifier.weight(1f).padding(start = CpdSpace.space2x),
                                         style = MaterialTheme.typography.titleSmall,
                                         color = CpdColor.textPrimary
                                     )
-                                    IconButton(onClick = onDismissSuggestion, Modifier.size(32.dp)) {
-                                        Icon(HugeIcons.Close, "Dismiss copied link", Modifier.size(18.dp), tint = CpdColor.textSecondary)
+                                    IconButton(onClick = onDismissSuggestion, Modifier.size(CpdSize.iconButton)) {
+                                        Icon(HugeIcons.Close, "Dismiss", Modifier.size(CpdSize.iconSm), tint = CpdColor.textSecondary)
                                     }
                                 }
                                 Text(
                                     suggestion,
-                                    Modifier.padding(top = CpdSpace.space15x, bottom = CpdSpace.space3x),
-                                    maxLines = 2,
+                                    Modifier.padding(top = CpdSpace.space1x, bottom = CpdSpace.space2x),
+                                    maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = CpdColor.textSecondary
                                 )
                                 BrandButton(
                                     onClick = { onSuggestion(suggestion) },
-                                    modifier = Modifier.fillMaxWidth().height(CpdSpace.space13x)
+                                    modifier = Modifier.fillMaxWidth().height(CpdSize.buttonLarge)
                                 ) {
-                                    Icon(HugeIcons.Download, null, Modifier.size(18.dp))
-                                    Spacer(Modifier.width(CpdSpace.space2x))
-                                    Text("Download this link", fontWeight = FontWeight.Normal)
+                                    Icon(HugeIcons.Download, null, Modifier.size(CpdSize.iconMd))
+                                    Spacer(Modifier.width(CpdSpace.space15x))
+                                    Text("Download now", fontWeight = FontWeight.Normal)
                                 }
                             }
                         }
@@ -223,9 +615,96 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 }
             }
 
-            Spacer(Modifier.height(CpdSpace.space6x))
+            // Quick Power Tools Drawer (Batch, Audio Extractor, M3U8, Subtitles)
+            Spacer(Modifier.height(CpdSpace.space4x))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(CpdRadius.radiusFull),
+                    color = CpdColor.bgSubtleSecondary,
+                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
+                    modifier = Modifier.clickable { onBatchOpen() }
+                ) {
+                    Row(Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(HugeIcons.Download, null, tint = CpdColor.CoralRest, modifier = Modifier.size(CpdSize.iconSm))
+                        Spacer(Modifier.width(CpdSpace.space15x))
+                        Text("Download Multiple", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false, color = CpdColor.textPrimary)
+                    }
+                }
+                Surface(
+                    shape = RoundedCornerShape(CpdRadius.radiusFull),
+                    color = CpdColor.bgSubtleSecondary,
+                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
+                    modifier = Modifier.clickable { onUtilityOpen("Extract Audio MP3") }
+                ) {
+                    Row(Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(HugeIcons.PlayCircle, null, tint = CpdColor.CoralRest, modifier = Modifier.size(CpdSize.iconSm))
+                        Spacer(Modifier.width(CpdSpace.space15x))
+                        Text("Save as Audio", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false, color = CpdColor.textPrimary)
+                    }
+                }
+                Surface(
+                    shape = RoundedCornerShape(CpdRadius.radiusFull),
+                    color = CpdColor.bgSubtleSecondary,
+                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
+                    modifier = Modifier.clickable { onUtilityOpen("M3U8 Stream Grabber") }
+                ) {
+                    Row(Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(HugeIcons.Language, null, tint = CpdColor.CoralRest, modifier = Modifier.size(CpdSize.iconSm))
+                        Spacer(Modifier.width(CpdSpace.space15x))
+                        Text("Live Stream", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false, color = CpdColor.textPrimary)
+                    }
+                }
+                Surface(
+                    shape = RoundedCornerShape(CpdRadius.radiusFull),
+                    color = CpdColor.bgSubtleSecondary,
+                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
+                    modifier = Modifier.clickable { onUtilityOpen("Subtitle Extractor") }
+                ) {
+                    Row(Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(HugeIcons.Info, null, tint = CpdColor.CoralRest, modifier = Modifier.size(CpdSize.iconSm))
+                        Spacer(Modifier.width(CpdSpace.space15x))
+                        Text("Subtitles only", style = MaterialTheme.typography.labelSmall, color = CpdColor.textPrimary)
+                    }
+                }
+            }
 
-            // Platform Directory Section
+            // Recent Searches / Quick Links Chips
+            if (recentSearches.isNotEmpty()) {
+                Spacer(Modifier.height(CpdSpace.space3x))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(CpdSpace.space15x),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Recent:", style = MaterialTheme.typography.labelSmall, color = CpdColor.textDisabled)
+                    recentSearches.forEach { query ->
+                        Surface(
+                            shape = CircleShape,
+                            color = CpdColor.bgSubtlePrimary,
+                            border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary.copy(alpha = 0.5f)),
+                            modifier = Modifier.clickable { onSelectRecent(query) }
+                        ) {
+                            Text(
+                                query,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = CpdColor.textSecondary,
+                                modifier = Modifier.padding(horizontal = CpdSpace.space2x, vertical = CpdSpace.space1x)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(CpdSpace.space4x))
+
+            // Platform Directory with Category Chips
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -233,11 +712,36 @@ import com.mediadock.app.domain.model.PlatformRegistry
             ) {
                 Text("Favorite platforms", style = MaterialTheme.typography.titleSmall, color = CpdColor.textPrimary)
                 TextButton(onClick = { onBrowse("") }) {
-                    Text("See all", color = CpdColor.CoralRest)
+                    Text("Explore all", color = CpdColor.CoralRest)
                 }
             }
 
-            PlatformRegistry.platforms.take(8).chunked(4).forEach { row ->
+            // Category Filter Chips (All, Video, Social, Audio, Community)
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf("All", "Video", "Social", "Music", "Community").forEach { cat ->
+                    FilterChip(
+                        selected = platformCategory == cat,
+                        onClick = { platformCategory = cat },
+                        label = { Text(cat, style = MaterialTheme.typography.labelSmall) }
+                    )
+                }
+            }
+
+            val filteredPlatforms = when (platformCategory) {
+                "Video" -> PlatformRegistry.platforms.filter { it.id in listOf("youtube", "vimeo", "dailymotion", "tiktok") }
+                "Social" -> PlatformRegistry.platforms.filter { it.id in listOf("instagram", "tiktok", "facebook", "twitter") }
+                "Music" -> PlatformRegistry.platforms.filter { it.id in listOf("soundcloud", "mixcloud", "youtube") }
+                "Community" -> PlatformRegistry.platforms.filter { it.id in listOf("reddit", "pinterest", "bluesky", "threads") }
+                else -> PlatformRegistry.platforms.take(8)
+            }
+
+            filteredPlatforms.take(8).chunked(4).forEach { row ->
                 Row(
                     Modifier.fillMaxWidth().padding(vertical = CpdSpace.space1x),
                     horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
@@ -267,9 +771,9 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 }
             }
 
-            Spacer(Modifier.height(CpdSpace.space5x))
+            Spacer(Modifier.height(CpdSpace.space4x))
 
-            // Secondary Shortcut Actions (Compound Secondary Tier)
+            // Secondary Shortcut Actions
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(CpdSpace.space3x)
@@ -291,6 +795,8 @@ import com.mediadock.app.domain.model.PlatformRegistry
                     Text("My collection", color = CpdColor.textPrimary)
                 }
             }
+
+            Spacer(Modifier.height(88.dp))
         }
     }
 }

@@ -2,6 +2,7 @@ package com.mediadock.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mediadock.app.core.ai.MediaDockAiAgent
 import com.mediadock.app.core.datastore.AppPreferences
 import com.mediadock.app.core.datastore.ThemeMode
 import com.mediadock.app.domain.repository.SettingsRepository
@@ -16,8 +17,11 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
-    private val getHistoryUseCase: GetHistoryUseCase
+    private val getHistoryUseCase: GetHistoryUseCase,
+    val aiAgent: MediaDockAiAgent
 ) : ViewModel() {
+
+    val aiStats = aiAgent.stats
 
     val preferences: StateFlow<AppPreferences> = settingsRepository.preferences
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppPreferences())

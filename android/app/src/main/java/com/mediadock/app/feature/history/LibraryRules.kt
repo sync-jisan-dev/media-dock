@@ -9,7 +9,7 @@ object LibraryRules {
     fun select(files: List<HistoryEntity>, state: WorkspaceState, query: String = "", type: String = "ALL", favorites: Boolean = false, collection: String? = null): List<HistoryEntity> {
         val ids = state.collections.find { it.id == collection }?.fileIds
         val filtered = files.filter { file ->
-            (type == "ALL" || file.mediaType.equals(type, true)) &&
+            (type == "ALL" || file.mediaType.equals(type, true) || (type == "document" && (file.format.equals("pdf", true) || file.mediaType.equals("pdf", true)))) &&
                 (!favorites || file.id in state.favorites) &&
                 (collection == null || (ids != null && file.id in ids)) &&
                 (query.isBlank() || listOf(title(file, state), file.sourceUrl, state.notes[file.id.toString()].orEmpty(), file.format).any { it.contains(query.trim(), true) })

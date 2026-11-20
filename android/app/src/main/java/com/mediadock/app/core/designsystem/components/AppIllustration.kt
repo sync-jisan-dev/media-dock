@@ -51,9 +51,9 @@ enum class IllustrationScene(val drawable: Int) {
 
     val containerModifier = if (showContainer) {
         modifier
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(CpdRadius.radiusXl))
             .background(BrandMintTint)
-            .border(1.dp, BrandSageMint, RoundedCornerShape(24.dp))
+            .border(CpdBorderWidth.hairline * 2, BrandSageMint, RoundedCornerShape(CpdRadius.radiusXl))
     } else {
         modifier
     }

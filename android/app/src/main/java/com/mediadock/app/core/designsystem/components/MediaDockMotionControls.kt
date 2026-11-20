@@ -33,8 +33,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.core.designsystem.icons.HugeIcons
-import com.mediadock.app.core.designsystem.theme.BrandCoralOrange
-import com.mediadock.app.core.designsystem.theme.CpdColor
+import com.mediadock.app.core.designsystem.theme.*
 
 // Native adaptations of Motion Brew's pill-tabs and download-button interactions.
 // Compose respects Android's animator duration scale, including reduced motion.
@@ -46,15 +45,15 @@ fun MediaDockPillTabs(
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        val cellWidth = (maxWidth / labels.size).coerceAtLeast(60.dp)
+        val cellWidth = (maxWidth / labels.size).coerceAtLeast(76.dp)
         val indicatorOffset by animateDpAsState(
             cellWidth * selectedIndex,
             tween(260, easing = CubicBezierEasing(.22f, 1f, .36f, 1f)),
             label = "selectionPosition"
         )
-        Box(Modifier.clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant).horizontalScroll(rememberScrollState())) {
-            Box(Modifier.width(cellWidth * labels.size).height(50.dp)) {
-                Box(Modifier.offset(x = indicatorOffset).width(cellWidth).fillMaxHeight().padding(4.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primary))
+        Box(Modifier.clip(RoundedCornerShape(CpdRadius.radiusFull)).background(MaterialTheme.colorScheme.surfaceVariant).horizontalScroll(rememberScrollState())) {
+            Box(Modifier.width(cellWidth * labels.size).height(48.dp)) {
+                Box(Modifier.offset(x = indicatorOffset).width(cellWidth).fillMaxHeight().padding(4.dp).clip(RoundedCornerShape(CpdRadius.radiusFull)).background(MaterialTheme.colorScheme.primary))
                 Row(Modifier.selectableGroup()) {
                     labels.forEachIndexed { index, label ->
                         val ink by animateColorAsState(
@@ -62,10 +61,10 @@ fun MediaDockPillTabs(
                             tween(160), label = "selectionInk"
                         )
                         Box(
-                            Modifier.width(cellWidth).height(50.dp).selectable(selected = index == selectedIndex, role = Role.Tab, onClick = { onSelected(index) }),
+                            Modifier.width(cellWidth).height(48.dp).selectable(selected = index == selectedIndex, role = Role.Tab, onClick = { onSelected(index) }),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(label, style = MaterialTheme.typography.labelMedium, color = ink, textAlign = TextAlign.Center, maxLines = 1)
+                            Text(label, style = MaterialTheme.typography.labelMedium, color = ink, textAlign = TextAlign.Center, maxLines = 1, softWrap = false)
                         }
                     }
                 }
@@ -79,14 +78,14 @@ fun MediaDockDownloadAction(label: String, busy: Boolean, onClick: () -> Unit, m
     BrandButton(
         onClick = onClick,
         enabled = !busy,
-        modifier = modifier.fillMaxWidth().height(54.dp).semantics { liveRegion = LiveRegionMode.Polite },
-        shape = RoundedCornerShape(18.dp),
+        modifier = modifier.fillMaxWidth().height(CpdSize.buttonLarge).semantics { liveRegion = LiveRegionMode.Polite },
+        shape = RoundedCornerShape(CpdRadius.radiusFull),
         colors = ButtonDefaults.buttonColors(disabledContainerColor = MaterialTheme.colorScheme.primary, disabledContentColor = MaterialTheme.colorScheme.onPrimary)
     ) {
         AnimatedContent(busy, label = "downloadAction") { pending ->
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (pending) CircularProgressIndicator(Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
-                else Icon(HugeIcons.Download, null, Modifier.size(22.dp))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x)) {
+                if (pending) CircularProgressIndicator(Modifier.size(CpdSize.iconSm), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = CpdBorderWidth.focused)
+                else Icon(HugeIcons.Download, null, Modifier.size(CpdSize.iconMd))
                 Text(if (pending) "Adding to downloads…" else label, style = MaterialTheme.typography.labelLarge)
             }
         }
@@ -122,12 +121,12 @@ fun MediaDockTransferStatus(label: String, progress: Float, completed: Boolean, 
         modifier
             .fillMaxWidth()
             .height(48.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(CpdRadius.radiusFull))
             .background(if (CpdColor.isDark) Color(0xFF1A1A1E) else Color(0xFFF1F3F5))
             .border(
-                width = 1.dp,
+                width = CpdBorderWidth.default,
                 color = if (completed) Color(0xFF10B981).copy(alpha = 0.4f) else BrandCoralOrange.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(CpdRadius.radiusFull)
             )
             .semantics { stateDescription = "$label, ${(fill * 100).toInt()} percent" },
         contentAlignment = Alignment.CenterStart

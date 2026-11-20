@@ -51,10 +51,30 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        val permissionsToRequest = mutableListOf<String>()
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 101)
+                permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
             }
+            if (checkSelfPermission(android.Manifest.permission.READ_MEDIA_VIDEO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(android.Manifest.permission.READ_MEDIA_VIDEO)
+            }
+            if (checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(android.Manifest.permission.READ_MEDIA_IMAGES)
+            }
+            if (checkSelfPermission(android.Manifest.permission.READ_MEDIA_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(android.Manifest.permission.READ_MEDIA_AUDIO)
+            }
+        } else {
+            if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+            }
+            if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
+        if (permissionsToRequest.isNotEmpty()) {
+            requestPermissions(permissionsToRequest.toTypedArray(), 101)
         }
 
         handleIncomingIntent(intent)
@@ -83,7 +103,7 @@ class MainActivity : ComponentActivity() {
                 }
                 val isRootScreen = currentRoute in topLevelRoutes
                 val pageColor = if (currentRoute == Screen.Home.route || currentRoute == Screen.Explore.route || currentRoute == Screen.Browser.route) browserPageColor() else androidx.compose.material3.MaterialTheme.colorScheme.background
-                val navBarColor = if (isRootScreen) com.mediadock.app.core.designsystem.theme.CpdColor.bgCanvasDefault else pageColor
+                val navBarColor = if (isRootScreen) (if (darkTheme) androidx.compose.ui.graphics.Color(0xFF161618) else androidx.compose.ui.graphics.Color(0xFFFFFFFF)) else pageColor
                 val view = LocalView.current
                 SideEffect {
                     window.statusBarColor = pageColor.toArgb()

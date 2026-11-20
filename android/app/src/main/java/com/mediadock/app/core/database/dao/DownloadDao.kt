@@ -26,6 +26,9 @@ interface DownloadDao {
     @Query("SELECT * FROM downloads WHERE status IN ('PENDING', 'QUEUED', 'PROCESSING', 'DOWNLOADING', 'PAUSED', 'FAILED') ORDER BY createdAt DESC")
     fun getActiveDownloads(): Flow<List<DownloadEntity>>
 
+    @Query("SELECT * FROM downloads WHERE status IN ('PENDING', 'QUEUED', 'PROCESSING', 'DOWNLOADING', 'PAUSED', 'FAILED') ORDER BY createdAt DESC")
+    suspend fun getActiveDownloadsList(): List<DownloadEntity>
+
     @Query("SELECT COUNT(*) FROM downloads WHERE status IN ('QUEUED', 'PROCESSING', 'DOWNLOADING')")
     fun getActiveDownloadsCount(): Flow<Int>
 

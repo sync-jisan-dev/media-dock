@@ -15,7 +15,7 @@ import com.mediadock.app.core.designsystem.theme.*
 
 @Composable fun SectionHeading(title: String, subtitle: String = "", action: @Composable (() -> Unit)? = null) {
     Surface(
-        shape = RoundedCornerShape(CpdRadius.radiusXl),
+        shape = RoundedCornerShape(CpdRadius.radiusLg),
         color = CpdColor.bgSubtleSecondary,
         border = BorderStroke(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary)
     ) {
@@ -36,7 +36,7 @@ import com.mediadock.app.core.designsystem.theme.*
 @Composable fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
     Surface(
         modifier,
-        shape = RoundedCornerShape(CpdRadius.radiusXl),
+        shape = RoundedCornerShape(CpdRadius.radiusLg),
         color = CpdColor.bgSubtleSecondary,
         border = BorderStroke(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary)
     ) {
@@ -59,7 +59,7 @@ import com.mediadock.app.core.designsystem.theme.*
                 singleLine = !multiline,
                 minLines = if (multiline) 3 else 1,
                 maxLines = if (multiline) 8 else 1,
-                shape = RoundedCornerShape(CpdRadius.radiusLg),
+                shape = RoundedCornerShape(CpdRadius.radiusMd),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = CpdColor.bgSubtleSecondary,
                     unfocusedContainerColor = CpdColor.bgSubtleSecondary,

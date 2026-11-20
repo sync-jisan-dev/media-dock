@@ -17,7 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.core.designsystem.components.BrandButton
 import com.mediadock.app.core.designsystem.icons.HugeIcons
-import com.mediadock.app.core.designsystem.theme.BrandCoralOrange
+import com.mediadock.app.core.designsystem.theme.*
 import com.mediadock.app.feature.browser.BrowserRules
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -111,8 +111,8 @@ fun MediaPreparationScreen(
             progress = { (effectiveProgress / 100f).coerceIn(0f, 1f) },
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp)),
+                .height(CpdSpace.space2x)
+                .clip(RoundedCornerShape(CpdRadius.radiusSm)),
             color = BrandCoralOrange,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -120,7 +120,7 @@ fun MediaPreparationScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .padding(top = 10.dp),
+                .padding(top = CpdSpace.space25x),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -139,37 +139,37 @@ fun MediaPreparationScreen(
 
         Text(
             text = "Receiving media packets from server",
-            modifier = Modifier.padding(top = 6.dp),
+            modifier = Modifier.padding(top = CpdSpace.space15x),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
         if (onViewQueue != null) {
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(CpdSpace.space4x))
             BrandButton(
                 onClick = onViewQueue,
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
-                    .height(44.dp)
+                    .height(CpdSize.buttonLarge)
             ) {
-                Icon(HugeIcons.Download, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
+                Icon(HugeIcons.Download, contentDescription = null, modifier = Modifier.size(CpdSize.iconSm))
+                Spacer(Modifier.width(CpdSpace.space2x))
                 Text("View in Queue", fontWeight = FontWeight.Normal)
             }
         }
 
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(CpdSpace.space7x))
         Surface(
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(CpdRadius.radiusLg),
             color = MaterialTheme.colorScheme.surface,
-            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.hairline * 2, MaterialTheme.colorScheme.outlineVariant)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(20.dp),
+                    .padding(CpdSpace.space4x),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(CpdSpace.space25x)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

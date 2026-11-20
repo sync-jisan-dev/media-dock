@@ -8,6 +8,7 @@ import com.mediadock.app.core.database.entity.HistoryEntity
 import com.mediadock.app.core.datastore.PreferencesDataStore
 import com.mediadock.app.core.network.MediaDockApi
 import com.mediadock.app.core.storage.StorageManager
+import com.mediadock.app.core.ai.AiSelfHealingEngine
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -40,7 +41,8 @@ class DownloadTransferEngine @Inject constructor(
     private val downloadDao: DownloadDao,
     private val historyDao: HistoryDao,
     private val storageManager: StorageManager,
-    private val preferencesDataStore: PreferencesDataStore
+    private val preferencesDataStore: PreferencesDataStore,
+    private val selfHealingEngine: AiSelfHealingEngine
 ) {
     private val engineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val activeTransfers = ConcurrentHashMap<String, Job>()
@@ -101,9 +103,29 @@ class DownloadTransferEngine @Inject constructor(
                 targetUri = uri
                 outputStream = out
 
-                val response = api.streamFile(fullUrl)
-                if (!response.isSuccessful || response.body() == null) {
-                    throw IllegalStateException("Failed to download file: HTTP ${response.code()}")
+                var currentStreamUrl = fullUrl
+                var response = try {
+                    api.streamFile(currentStreamUrl)
+                } catch (e: Exception) {
+                    null
+                }
+
+                if (response == null || !response.isSuccessful || response.body() == null) {
+                    val heal = selfHealingEngine.attemptHealing(
+                        jobId = jobId,
+                        failedUrl = currentStreamUrl,
+                        sourceUrl = fileUrl,
+                        downloadedBytes = 0L,
+                        errorMessage = response?.let { "HTTP ${it.code()}" } ?: "Direct connection refused"
+                    )
+                    if (heal.healed && heal.freshStreamUrl != null) {
+                        currentStreamUrl = heal.freshStreamUrl
+                        response = try { api.streamFile(currentStreamUrl) } catch (_: Exception) { null }
+                    }
+                }
+
+                if (response == null || !response.isSuccessful || response.body() == null) {
+                    throw IllegalStateException("Failed to download file: HTTP ${response?.code() ?: "Connection failed"}")
                 }
 
                 val body: ResponseBody = response.body()!!

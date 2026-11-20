@@ -45,7 +45,7 @@ fun BrandButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(CpdRadius.radiusXl),
+    shape: Shape = RoundedCornerShape(CpdRadius.radiusFull),
     colors: ButtonColors = ButtonDefaults.buttonColors(
         containerColor = CpdColor.bgActionPrimaryRest,
         contentColor = CpdColor.textOnSolidPrimary,
@@ -54,7 +54,7 @@ fun BrandButton(
     ),
     elevation: ButtonElevation? = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
     border: BorderStroke? = BorderStroke(CpdBorderWidth.hairline, Color(0x33FFFFFF)),
-    contentPadding: PaddingValues = PaddingValues(horizontal = CpdSpace.space6x, vertical = CpdSpace.space3x),
+    contentPadding: PaddingValues = PaddingValues(horizontal = CpdSpace.space6x, vertical = CpdSpace.space2x),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable RowScope.() -> Unit
 ) {
@@ -69,7 +69,7 @@ fun BrandButton(
         onClick = onClick,
         modifier = modifier
             .scale(scale)
-            .defaultMinSize(minHeight = CpdSpace.space13x),
+            .defaultMinSize(minHeight = CpdSize.buttonLarge),
         enabled = enabled,
         shape = shape,
         colors = colors,
@@ -83,20 +83,20 @@ fun BrandButton(
 
 /**
  * Compound Tier 2 Action: Outlined Secondary Button.
- * Height: 44dp (space-11x) or 48dp (space-12x) touch target.
+ * Pill geometry, Medium height (40dp), Horizontal padding 20dp.
  */
 @Composable
 fun CompoundSecondaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    shape: Shape = RoundedCornerShape(CpdRadius.radiusLg),
-    contentPadding: PaddingValues = PaddingValues(horizontal = CpdSpace.space4x, vertical = CpdSpace.space2x),
+    shape: Shape = RoundedCornerShape(CpdRadius.radiusFull),
+    contentPadding: PaddingValues = PaddingValues(horizontal = CpdSpace.space5x, vertical = CpdSpace.space2x),
     content: @Composable RowScope.() -> Unit
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.defaultMinSize(minHeight = CpdSpace.space11x),
+        modifier = modifier.defaultMinSize(minHeight = CpdSize.buttonMedium),
         enabled = enabled,
         shape = shape,
         colors = ButtonDefaults.outlinedButtonColors(

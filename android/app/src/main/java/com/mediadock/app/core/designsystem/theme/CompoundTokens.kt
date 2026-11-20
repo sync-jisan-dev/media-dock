@@ -195,7 +195,9 @@ object CpdSpace {
     val space1x = 4.dp
     val space15x = 6.dp
     val space2x = 8.dp
+    val space25x = 10.dp
     val space3x = 12.dp
+    val space35x = 14.dp
     val space4x = 16.dp
     val space5x = 20.dp
     val space6x = 24.dp
@@ -207,6 +209,7 @@ object CpdSpace {
     val space12x = 48.dp // Standard action touch target
     val space13x = 52.dp // Primary CTA height
     val space14x = 56.dp // Standard search input height
+    val space16x = 64.dp
 }
 
 /**
@@ -228,4 +231,28 @@ object CpdBorderWidth {
     val hairline = 0.5.dp
     val default = 1.dp
     val focused = 2.dp
+    val focus = 2.dp
+    val strong = 4.dp
+}
+
+/**
+ * Standard Component Dimensions from Compound / ElementX Token Quality Bar.
+ */
+object CpdSize {
+    val buttonLarge = 48.dp
+    val buttonMedium = 40.dp
+    val buttonSmall = 32.dp
+    val inputHeight = 56.dp
+    val iconButton = 40.dp
+    val touchTargetMin = 48.dp
+    val chipHeight = 32.dp
+    val badgeHeight = 24.dp
+    val iconSm = 16.dp
+    val iconMd = 20.dp
+    val iconLg = 24.dp
+    val iconXl = 30.dp
+    val avatarSm = 24.dp
+    val avatarMd = 32.dp
+    val avatarLg = 40.dp
+    val avatarXl = 52.dp
 }

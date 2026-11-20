@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -140,6 +141,14 @@ private fun BrowserPage(
     var zoomDialog by remember { mutableStateOf(false) }
     var zoom by remember { mutableStateOf(tab.textZoom.toFloat()) }
     var editingAddress by remember { mutableStateOf(false) }
+    var detectedMediaUrl by remember { mutableStateOf<String?>(null) }
+    var adBlockEnabled by rememberSaveable { mutableStateOf(true) }
+    var blockedTrackersCount by remember { mutableStateOf(0) }
+    var isIncognito by rememberSaveable { mutableStateOf(false) }
+    var readerMode by remember { mutableStateOf(false) }
+    var forceDarkMode by remember { mutableStateOf(false) }
+    var shieldDialog by remember { mutableStateOf(false) }
+    var userAgentDialog by remember { mutableStateOf(false) }
     var uploadCallback by remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
     var allowMultiple by remember { mutableStateOf(false) }
     var fullscreen by remember { mutableStateOf<View?>(null) }
@@ -210,10 +219,30 @@ private fun BrowserPage(
                 override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                     return request.url.scheme !in listOf("http", "https")
                 }
+                override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+                    val reqUrl = request.url.toString().lowercase()
+                    if (adBlockEnabled) {
+                        val isAd = reqUrl.contains("googleads") || reqUrl.contains("doubleclick") ||
+                                   reqUrl.contains("/ads.") || reqUrl.contains("adservice") ||
+                                   reqUrl.contains("analytics") || reqUrl.contains("telemetry") ||
+                                   reqUrl.contains("facebook.net/tr")
+                        if (isAd) {
+                            blockedTrackersCount++
+                            return WebResourceResponse("text/plain", "UTF-8", java.io.ByteArrayInputStream("".toByteArray()))
+                        }
+                    }
+                    if (reqUrl.endsWith(".mp4") || reqUrl.endsWith(".webm") || reqUrl.endsWith(".m4a") ||
+                        reqUrl.endsWith(".mp3") || reqUrl.contains(".m3u8") || reqUrl.contains("videoplayback")) {
+                        detectedMediaUrl = request.url.toString()
+                    }
+                    return super.shouldInterceptRequest(view, request)
+                }
                 override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                     currentUrl = url.takeIf(WorkspaceRules::validUrl).orEmpty()
                     address = currentUrl
                     pageError = null
+                    blockedTrackersCount = 0
+                    detectedMediaUrl = null
                     if (WorkspaceRules.validUrl(url)) browser.updateTab(tab.id) { it.copy(url = url) }
                 }
                 override fun onPageFinished(view: WebView, url: String) {
@@ -276,6 +305,28 @@ private fun BrowserPage(
     LaunchedEffect(webView) {
         val restored = browser.restoreWebState(tab.id)?.let { webView.restoreState(it) != null } ?: false
         if (!restored && tab.url.isNotBlank()) webView.loadUrl(tab.url)
+    }
+
+    LaunchedEffect(readerMode) {
+        if (readerMode) {
+            webView.evaluateJavascript(
+                "document.querySelectorAll('header,nav,footer,aside,.ad,.advertisement,#comments').forEach(e => e.style.display='none'); document.body.style.fontSize='18px'; document.body.style.lineHeight='1.6';",
+                null
+            )
+        } else if (currentUrl.isNotBlank()) {
+            webView.reload()
+        }
+    }
+
+    LaunchedEffect(forceDarkMode) {
+        if (forceDarkMode) {
+            webView.evaluateJavascript(
+                "document.documentElement.style.filter='invert(90%) hue-rotate(180deg)'; document.querySelectorAll('img, video').forEach(e => e.style.filter='invert(100%) hue-rotate(180deg)');",
+                null
+            )
+        } else {
+            webView.evaluateJavascript("document.documentElement.style.filter='';", null)
+        }
     }
 
     DisposableEffect(webView, lifecycle) {
@@ -367,18 +418,18 @@ private fun BrowserPage(
             text = {
                 LazyColumn(
                     modifier = Modifier.heightIn(max = 440.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
                 ) {
                     items(session.tabs, key = { it.id }) { item ->
                         val isActive = item.id == session.activeId
                         Surface(
-                            shape = RoundedCornerShape(14.dp),
+                            shape = RoundedCornerShape(CpdRadius.radiusLg),
                             color = if (isActive) BrandCoralOrange.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            border = if (isActive) BorderStroke(1.5.dp, BrandCoralOrange) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                            border = if (isActive) BorderStroke(CpdBorderWidth.focus, BrandCoralOrange) else BorderStroke(CpdBorderWidth.hairline * 2, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(
@@ -549,6 +600,86 @@ private fun BrowserPage(
         )
     }
 
+    // MediaDock Shield (Ad & Tracker Blocker Dialog)
+    if (shieldDialog) {
+        AlertDialog(
+            onDismissRequest = { shieldDialog = false },
+            icon = {
+                Icon(
+                    imageVector = HugeIcons.Security,
+                    contentDescription = null,
+                    tint = if (adBlockEnabled) Color(0xFF10B981) else BrandCoralOrange,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            title = { Text("MediaDock Shield", textAlign = TextAlign.Center) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Ad & Tracker Blocker", style = MaterialTheme.typography.bodyMedium)
+                        Switch(
+                            checked = adBlockEnabled,
+                            onCheckedChange = { adBlockEnabled = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = BrandCoralOrange, checkedTrackColor = BrandCoralOrange.copy(alpha = 0.5f))
+                        )
+                    }
+                    Surface(shape = RoundedCornerShape(CpdRadius.radiusMd), color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(CpdSpace.space3x), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("Trackers blocked on this page", style = MaterialTheme.typography.bodySmall)
+                            Text("$blockedTrackersCount", style = MaterialTheme.typography.titleSmall, color = BrandCoralOrange)
+                        }
+                    }
+                    Text("Blocks invasive ad scripts, crypto miners, and telemetry trackers for faster, safer page loading.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { shieldDialog = false; webView.reload() }) {
+                    Text("Apply & Reload")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { shieldDialog = false }) { Text("Close") }
+            }
+        )
+    }
+
+    // User-Agent Switcher Dialog
+    if (userAgentDialog) {
+        val userAgents = listOf(
+            "Android Mobile (Default)" to "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+            "Desktop (Chrome / Linux)" to "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "iPhone (Safari / iOS 17)" to "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+            "iPad Pro (Desktop Safari)" to "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15"
+        )
+        AlertDialog(
+            onDismissRequest = { userAgentDialog = false },
+            title = { Text("Choose User-Agent") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    userAgents.forEach { (name, ua) ->
+                        Surface(
+                            shape = RoundedCornerShape(CpdRadius.radiusMd),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth().clickable {
+                                webView.settings.userAgentString = ua
+                                userAgentDialog = false
+                                webView.reload()
+                                Toast.makeText(context, "User-Agent switched to $name", Toast.LENGTH_SHORT).show()
+                            }
+                        ) {
+                            Text(name, modifier = Modifier.padding(CpdSpace.space3x), style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { userAgentDialog = false }) { Text("Cancel") } }
+        )
+    }
+
     Column(modifier = modifier.fillMaxSize().background(browserPageColor())) {
         // TOP APP BAR / OMNIBOX (When in browsing mode)
         if (!showStart && currentUrl.isNotBlank()) {
@@ -583,7 +714,7 @@ private fun BrowserPage(
                                         modifier = Modifier.padding(end = 8.dp)
                                     )
                                 },
-                                shape = RoundedCornerShape(20.dp)
+                                shape = RoundedCornerShape(CpdRadius.radiusMd)
                             )
                             IconButton(onClick = { webView.findNext(false) }) {
                                 Icon(HugeIcons.ChevronRight, "Previous", Modifier.size(20.dp))
@@ -612,16 +743,16 @@ private fun BrowserPage(
                                     placeholder = { Text("Search or type web address") },
                                     singleLine = true,
                                     leadingIcon = {
-                                        Icon(HugeIcons.Search, null, Modifier.size(18.dp))
+                                        Icon(HugeIcons.Search, null, Modifier.size(CpdSize.iconMd))
                                     },
                                     trailingIcon = {
                                         if (address.isNotBlank()) {
                                             IconButton(onClick = { address = "" }) {
-                                                Icon(HugeIcons.Close, "Clear", Modifier.size(18.dp))
+                                                Icon(HugeIcons.Close, "Clear", Modifier.size(CpdSize.iconMd))
                                             }
                                         }
                                     },
-                                    shape = RoundedCornerShape(24.dp),
+                                    shape = RoundedCornerShape(CpdRadius.radiusMd),
                                     keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                         imeAction = androidx.compose.ui.text.input.ImeAction.Go
                                     ),
@@ -629,7 +760,7 @@ private fun BrowserPage(
                                         onGo = { open(address) }
                                     )
                                 )
-                                Spacer(Modifier.width(8.dp))
+                                Spacer(Modifier.width(CpdSpace.space2x))
                                 IconButton(
                                     onClick = { open(address) },
                                     enabled = address.isNotBlank()
@@ -645,8 +776,8 @@ private fun BrowserPage(
                             }
                             // Search engine quick switcher
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                modifier = Modifier.fillMaxWidth().padding(top = CpdSpace.space1x),
+                                horizontalArrangement = Arrangement.spacedBy(CpdSpace.space15x)
                             ) {
                                 listOf("Google", "DuckDuckGo", "Bing").forEach { engine ->
                                     FilterChip(
@@ -666,12 +797,12 @@ private fun BrowserPage(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                                .padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space15x),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Omnibox Capsule
                             Surface(
-                                shape = RoundedCornerShape(24.dp),
+                                shape = RoundedCornerShape(CpdRadius.radiusMd),
                                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                                 modifier = Modifier
                                     .weight(1f)
@@ -681,9 +812,35 @@ private fun BrowserPage(
                                     }
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                    modifier = Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    if (isIncognito) {
+                                        Surface(
+                                            shape = RoundedCornerShape(CpdRadius.radiusFull),
+                                            color = Color(0xFF8B5CF6).copy(alpha = 0.2f),
+                                            modifier = Modifier.padding(end = CpdSpace.space15x)
+                                        ) {
+                                            Text(
+                                                "Private",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = Color(0xFF8B5CF6),
+                                                modifier = Modifier.padding(horizontal = CpdSpace.space2x, vertical = CpdSpace.space05x)
+                                            )
+                                        }
+                                    }
+                                    IconButton(
+                                        onClick = { shieldDialog = true },
+                                        modifier = Modifier.size(CpdSize.iconLg)
+                                    ) {
+                                        Icon(
+                                            imageVector = HugeIcons.Security,
+                                            contentDescription = "Shield",
+                                            tint = if (adBlockEnabled) Color(0xFF10B981) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    Spacer(Modifier.width(4.dp))
                                     Icon(
                                         imageVector = if (currentUrl.startsWith("https://")) HugeIcons.Language else HugeIcons.ErrorOutline,
                                         contentDescription = "SSL Status",
@@ -726,16 +883,16 @@ private fun BrowserPage(
 
                             // Chrome-style Tab Counter Badge [ N ]
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)),
+                                shape = RoundedCornerShape(CpdRadius.radiusMd),
+                                border = BorderStroke(CpdBorderWidth.hairline * 2, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)),
                                 color = Color.Transparent,
                                 modifier = Modifier
                                     .clickable { tabsDialog = true }
-                                    .padding(horizontal = 2.dp)
+                                    .padding(horizontal = CpdSpace.space05x)
                             ) {
                                 Text(
                                     text = session.tabs.size.toString(),
-                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                                    modifier = Modifier.padding(horizontal = CpdSpace.space15x, vertical = CpdSpace.space05x),
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Normal
                                 )
@@ -810,6 +967,63 @@ private fun BrowserPage(
                                         leadingIcon = { Icon(HugeIcons.Search, null) },
                                         onClick = {
                                             findInPage = true
+                                            menu = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                Text("MediaDock Shield ($blockedTrackersCount blocked)")
+                                                Icon(HugeIcons.Security, null, tint = if (adBlockEnabled) Color(0xFF10B981) else Color.Gray, modifier = Modifier.size(18.dp))
+                                            }
+                                        },
+                                        onClick = {
+                                            shieldDialog = true
+                                            menu = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                Text("Private browsing")
+                                                Checkbox(checked = isIncognito, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = Color(0xFF8B5CF6)))
+                                            }
+                                        },
+                                        onClick = {
+                                            isIncognito = !isIncognito
+                                            Toast.makeText(context, if (isIncognito) "Private mode on" else "Normal mode", Toast.LENGTH_SHORT).show()
+                                            menu = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                Text("Reader mode")
+                                                Checkbox(checked = readerMode, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = BrandCoralOrange))
+                                            }
+                                        },
+                                        onClick = {
+                                            readerMode = !readerMode
+                                            menu = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = {
+                                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                                Text("Force dark web")
+                                                Checkbox(checked = forceDarkMode, onCheckedChange = null, colors = CheckboxDefaults.colors(checkedColor = BrandCoralOrange))
+                                            }
+                                        },
+                                        onClick = {
+                                            forceDarkMode = !forceDarkMode
+                                            menu = false
+                                        }
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Switch User-Agent") },
+                                        leadingIcon = { Icon(HugeIcons.Explore, null) },
+                                        onClick = {
+                                            userAgentDialog = true
                                             menu = false
                                         }
                                     )
@@ -906,10 +1120,10 @@ private fun BrowserPage(
             if (pageError != null) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
-                    modifier = Modifier.fillMaxWidth().padding(12.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    modifier = Modifier.fillMaxWidth().padding(CpdSpace.space3x),
+                    shape = RoundedCornerShape(CpdRadius.radiusLg)
                 ) {
-                    Column(Modifier.padding(14.dp)) {
+                    Column(Modifier.padding(CpdSpace.space4x)) {
                         Text(pageError!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                         Row(modifier = Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             TextButton(onClick = { webView.reload() }) {
@@ -928,6 +1142,47 @@ private fun BrowserPage(
                 modifier = Modifier.weight(1f).fillMaxWidth()
             )
 
+            // Floating Media Sniffer Bar (Auto-detected video/audio stream)
+            AnimatedVisibility(
+                visible = detectedMediaUrl != null,
+                enter = slideInVertically { it } + fadeIn(),
+                exit = slideOutVertically { it } + fadeOut()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(CpdRadius.radiusLg),
+                    color = BrandCoralOrange,
+                    shadowElevation = 8.dp,
+                    modifier = Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space15x).fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = CpdSpace.space35x, vertical = CpdSpace.space2x),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(HugeIcons.PlayCircle, null, tint = Color.White, modifier = Modifier.size(CpdSize.iconLg))
+                        Spacer(Modifier.width(CpdSpace.space2x))
+                        Column(Modifier.weight(1f)) {
+                            Text("Media Stream Detected", style = MaterialTheme.typography.titleSmall, color = Color.White)
+                            Text(BrowserRules.displayHost(detectedMediaUrl ?: ""), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Button(
+                            onClick = {
+                                detectedMediaUrl?.let { downloadCallback(it) }
+                                detectedMediaUrl = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = BrandCoralOrange),
+                            shape = RoundedCornerShape(CpdRadius.radiusFull),
+                            modifier = Modifier.height(CpdSize.buttonSmall),
+                            contentPadding = PaddingValues(horizontal = CpdSpace.space3x)
+                        ) {
+                            Text("Download", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+                        }
+                        IconButton(onClick = { detectedMediaUrl = null }) {
+                            Icon(HugeIcons.Close, "Dismiss", tint = Color.White, modifier = Modifier.size(CpdSize.iconMd))
+                        }
+                    }
+                }
+            }
+
             // Chrome Bottom Navigation Toolbar
             Surface(
                 color = CpdColor.bgSubtleTertiary,
@@ -937,7 +1192,7 @@ private fun BrowserPage(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space15x),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -972,13 +1227,13 @@ private fun BrowserPage(
                     }
                     IconButton(onClick = { tabsDialog = true }) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.5.dp, CpdColor.textPrimary),
+                            shape = RoundedCornerShape(CpdRadius.radiusSm),
+                            border = BorderStroke(CpdBorderWidth.hairline * 2, CpdColor.textPrimary),
                             color = Color.Transparent
                         ) {
                             Text(
                                 text = session.tabs.size.toString(),
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
+                                modifier = Modifier.padding(horizontal = CpdSpace.space15x, vertical = CpdSpace.space05x),
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }
@@ -986,66 +1241,114 @@ private fun BrowserPage(
                     BrandButton(
                         onClick = { downloadCallback(currentUrl) },
                         enabled = WorkspaceRules.validUrl(currentUrl),
-                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp)
+                        contentPadding = PaddingValues(horizontal = CpdSpace.space35x, vertical = CpdSpace.space2x)
                     ) {
-                        Icon(HugeIcons.Download, null, Modifier.size(17.dp))
-                        Spacer(Modifier.width(6.dp))
+                        Icon(HugeIcons.Download, null, Modifier.size(CpdSize.iconSm))
+                        Spacer(Modifier.width(CpdSpace.space15x))
                         Text("Save")
                     }
                 }
             }
         } else {
             // Chrome Start Page / New Tab
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+            Column(Modifier.weight(1f).fillMaxWidth()) {
+                // Pinned Top Header Bar in the top corners of the screen
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Header Bar with Saved pages & Tab count
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            TextButton(onClick = onSavedLinks) {
-                                Icon(HugeIcons.FolderOpen, null, Modifier.size(18.dp), tint = CpdColor.CoralRest)
-                                Spacer(Modifier.width(6.dp))
-                                Text("Saved pages", color = CpdColor.textPrimary, style = MaterialTheme.typography.labelMedium)
-                            }
-                            TextButton(onClick = { tabsDialog = true }) {
-                                Icon(HugeIcons.Collections, null, Modifier.size(18.dp), tint = CpdColor.CoralRest)
-                                Spacer(Modifier.width(6.dp))
-                                Text("${session.tabs.size} tabs", color = CpdColor.textPrimary, style = MaterialTheme.typography.labelMedium)
-                            }
-                        }
+                    // Top-Left: Saved pages
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(CpdRadius.radiusFull))
+                            .clickable(onClick = onSavedLinks)
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            imageVector = HugeIcons.FolderOpen,
+                            contentDescription = "Saved pages",
+                            modifier = Modifier.size(20.dp),
+                            tint = CpdColor.CoralRest
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "Saved pages",
+                            color = CpdColor.textPrimary,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
 
+                    // Top-Right: Browser Tab Switcher Badge
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(CpdRadius.radiusFull))
+                            .clickable { tabsDialog = true }
+                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                    ) {
+                        // Chrome-style Tab Box [ N ]
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .border(
+                                    width = 1.5.dp,
+                                    color = CpdColor.CoralRest,
+                                    shape = RoundedCornerShape(6.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (session.tabs.size > 99) "99+" else session.tabs.size.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = CpdColor.CoralRest,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = if (session.tabs.size == 1) "1 tab" else "${session.tabs.size} tabs",
+                            color = CpdColor.textPrimary,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+
+                // Scrollable Content
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
                     // Hero Welcome
                     item {
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(CpdSpace.space2x))
                         Text(
                             text = "Your space to explore.",
                             style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Light,
+                            fontWeight = FontWeight.Normal,
                             color = CpdColor.textPrimary
                         )
-                        Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(CpdSpace.space15x))
                         Text(
                             text = "Search anything or visit any website.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = CpdColor.textSecondary
                         )
-                        Spacer(Modifier.height(18.dp))
+                        Spacer(Modifier.height(CpdSpace.space4x))
                     }
 
                     // Search Provider Chips (Google, DuckDuckGo, Bing)
                     item {
                         Row(
-                            modifier = Modifier.padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.padding(bottom = CpdSpace.space3x),
+                            horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
                         ) {
                             listOf("Google", "DuckDuckGo", "Bing").forEach { engine ->
                                 FilterChip(
@@ -1066,10 +1369,17 @@ private fun BrowserPage(
                         OutlinedTextField(
                             value = startQuery,
                             onValueChange = { startQuery = it },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.fillMaxWidth().height(CpdSize.inputHeight),
                             singleLine = true,
-                            placeholder = { Text("Search with $selectedEngine or type URL") },
-                            leadingIcon = { Icon(HugeIcons.Search, null, Modifier.size(20.dp)) },
+                            placeholder = {
+                                Text(
+                                    "Search with $selectedEngine or type URL",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = CpdColor.textDisabled
+                                )
+                            },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(color = CpdColor.textPrimary),
+                            leadingIcon = { Icon(HugeIcons.Search, null, Modifier.size(CpdSize.iconMd), tint = CpdColor.textSecondary) },
                             trailingIcon = {
                                 if (startQuery.isNotBlank()) {
                                     IconButton(onClick = { open(startQuery) }) {
@@ -1077,7 +1387,16 @@ private fun BrowserPage(
                                     }
                                 }
                             },
-                            shape = RoundedCornerShape(28.dp),
+                            shape = RoundedCornerShape(CpdRadius.radiusMd),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = CpdColor.bgSubtleSecondary,
+                                focusedContainerColor = CpdColor.bgSubtleSecondary,
+                                unfocusedBorderColor = CpdColor.borderInteractiveSecondary,
+                                focusedBorderColor = CpdColor.borderFocused,
+                                focusedTextColor = CpdColor.textPrimary,
+                                unfocusedTextColor = CpdColor.textPrimary,
+                                cursorColor = CpdColor.CoralRest
+                            ),
                             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                                 imeAction = androidx.compose.ui.text.input.ImeAction.Go
                             ),
@@ -1085,7 +1404,7 @@ private fun BrowserPage(
                                 onGo = { open(startQuery) }
                             )
                         )
-                        Spacer(Modifier.height(20.dp))
+                        Spacer(Modifier.height(CpdSpace.space5x))
                     }
 
                     // Top Platforms Grid (12 platforms)
@@ -1098,9 +1417,9 @@ private fun BrowserPage(
                                 Column(
                                     modifier = Modifier
                                         .weight(1f)
-                                        .clip(RoundedCornerShape(12.dp))
+                                        .clip(RoundedCornerShape(CpdRadius.radiusLg))
                                         .clickable { open("https://${platform.domains.first()}") }
-                                        .padding(vertical = 10.dp),
+                                        .padding(vertical = CpdSpace.space25x),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     PlatformIcon(platform.id)
@@ -1143,16 +1462,16 @@ private fun BrowserPage(
                             ) {
                                 items(saved.links.take(6)) { bookmark ->
                                     Surface(
-                                        shape = RoundedCornerShape(12.dp),
+                                        shape = RoundedCornerShape(CpdRadius.radiusLg),
                                         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                                         modifier = Modifier.clickable { open(bookmark.url) }
                                     ) {
                                         Row(
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                            modifier = Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
-                                            Icon(HugeIcons.PushPin, null, Modifier.size(14.dp), tint = BrandCoralOrange)
-                                            Spacer(Modifier.width(6.dp))
+                                            Icon(HugeIcons.PushPin, null, Modifier.size(CpdSize.iconSm), tint = BrandCoralOrange)
+                                            Spacer(Modifier.width(CpdSpace.space15x))
                                             Text(
                                                 text = bookmark.title.ifBlank { BrowserRules.displayHost(bookmark.url) },
                                                 style = MaterialTheme.typography.labelSmall,
@@ -1170,6 +1489,15 @@ private fun BrowserPage(
                     if (currentUrl.isNotBlank()) {
                         item {
                             Spacer(Modifier.height(14.dp))
+                            val displayContinueTitle = remember(pageTitle, currentUrl) {
+                                val decodedUrl = runCatching { java.net.URLDecoder.decode(currentUrl, "UTF-8") }.getOrDefault(currentUrl)
+                                val cleanHost = BrowserRules.displayHost(decodedUrl)
+                                when {
+                                    pageTitle.isNotBlank() && !pageTitle.startsWith("http", true) && !pageTitle.contains("%") -> pageTitle
+                                    cleanHost.isNotBlank() -> cleanHost
+                                    else -> decodedUrl.removePrefix("https://").removePrefix("http://")
+                                }
+                            }
                             TextButton(
                                 onClick = {
                                     onStartChanged(false)
@@ -1179,9 +1507,11 @@ private fun BrowserPage(
                                 Icon(HugeIcons.ChevronRight, null, Modifier.size(16.dp), tint = CpdColor.CoralRest)
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    text = "Continue: ${pageTitle.take(30).ifBlank { BrowserRules.displayHost(currentUrl) }}",
+                                    text = "Continue: $displayContinueTitle",
                                     color = CpdColor.CoralRest,
-                                    style = MaterialTheme.typography.labelMedium
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }

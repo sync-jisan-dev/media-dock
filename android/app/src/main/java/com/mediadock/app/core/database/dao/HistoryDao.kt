@@ -16,11 +16,17 @@ interface HistoryDao {
     @Query("SELECT * FROM download_history ORDER BY downloadedAt DESC")
     fun getAllHistory(): Flow<List<HistoryEntity>>
 
+    @Query("SELECT * FROM download_history ORDER BY downloadedAt DESC")
+    suspend fun getAllHistoryList(): List<HistoryEntity>
+
     @Query("SELECT * FROM download_history WHERE title LIKE '%' || :query || '%' OR sourceUrl LIKE '%' || :query || '%' ORDER BY downloadedAt DESC")
     fun searchHistory(query: String): Flow<List<HistoryEntity>>
 
     @Query("SELECT * FROM download_history WHERE mediaType = :mediaType ORDER BY downloadedAt DESC")
     fun getHistoryByType(mediaType: String): Flow<List<HistoryEntity>>
+
+    @Query("SELECT * FROM download_history WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): HistoryEntity?
 
     @Query("DELETE FROM download_history WHERE id = :id")
     suspend fun delete(id: Long)

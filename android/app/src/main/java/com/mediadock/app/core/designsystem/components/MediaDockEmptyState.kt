@@ -89,9 +89,9 @@ fun MediaDockEmptyState(
             Box(
                 modifier = Modifier
                     .size(96.dp)
-                    .clip(RoundedCornerShape(CpdRadius.radiusXl))
+                    .clip(RoundedCornerShape(CpdRadius.radiusLg))
                     .background(CpdColor.bgSubtleSecondary)
-                    .border(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary, RoundedCornerShape(CpdRadius.radiusXl)),
+                    .border(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary, RoundedCornerShape(CpdRadius.radiusLg)),
                 contentAlignment = Alignment.Center
             ) {
                 AsciiHeroAnimation(
@@ -102,18 +102,18 @@ fun MediaDockEmptyState(
                 Icon(
                     icon,
                     null,
-                    Modifier.size(38.dp),
+                    Modifier.size(32.dp),
                     tint = CpdColor.CoralRest
                 )
             }
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(CpdSpace.space4x))
             Text(
                 title,
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(CpdSpace.space2x))
             Text(
                 cleanMessage,
                 style = MaterialTheme.typography.bodyMedium,
@@ -121,19 +121,19 @@ fun MediaDockEmptyState(
                 textAlign = TextAlign.Center
             )
             if (!actionLabel.isNullOrBlank()) {
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(CpdSpace.space5x))
                 BrandButton(
                     onClick = onActionClick,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(14.dp)
+                    modifier = Modifier.fillMaxWidth().height(CpdSize.buttonLarge),
+                    shape = RoundedCornerShape(CpdRadius.radiusFull)
                 ) { Text(actionLabel) }
             }
             if (!secondaryActionLabel.isNullOrBlank() && onSecondaryActionClick != null) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(CpdSpace.space3x))
                 OutlinedButton(
                     onClick = onSecondaryActionClick,
-                    modifier = Modifier.fillMaxWidth().height(48.dp),
-                    shape = RoundedCornerShape(14.dp)
+                    modifier = Modifier.fillMaxWidth().height(CpdSize.buttonLarge),
+                    shape = RoundedCornerShape(CpdRadius.radiusFull)
                 ) { Text(secondaryActionLabel) }
             }
         }

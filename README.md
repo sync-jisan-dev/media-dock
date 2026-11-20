@@ -1,11 +1,22 @@
 # MediaDock — All-in-One Android Media Downloader
 
-[![Android CI/CD](https://github.com/mediadock/mediadock/actions/workflows/android.yml/badge.svg)](.github/workflows/android.yml)
-[![Backend CI/CD](https://github.com/mediadock/mediadock/actions/workflows/backend.yml/badge.svg)](.github/workflows/backend.yml)
+[![Download Latest APK](https://img.shields.io/badge/Download-MediaDock%20v1.4.0%20APK-FE5223?style=for-the-badge&logo=android&logoColor=white)](https://github.com/sync-jisan-dev/media-dock/releases/download/v1.4.0/MediaDock-release.apk)
+[![Latest Release](https://img.shields.io/github/v/release/sync-jisan-dev/media-dock?color=FE5223&label=Release)](https://github.com/sync-jisan-dev/media-dock/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Target: Android 14](https://img.shields.io/badge/Android%20SDK-API%2034-green.svg)](android/)
 
-MediaDock is an enterprise-grade, universal media downloader for Android. It enables users to paste or share URLs from major video platforms, social networks, and websites to analyze, select, convert, and download videos, audio streams, high-resolution images, and animated GIFs directly into Android storage.
+MediaDock is an enterprise-grade, open-source universal media downloader and Chrome-grade browser for Android. Built with Jetpack Compose, Kotlin Coroutines, and Clean Architecture, MediaDock enables users to paste or share URLs from major video platforms, social networks, and websites to analyze, select, convert, and download media directly into local storage.
+
+---
+
+## 🚀 Quick Download
+
+Direct production builds are available under [GitHub Releases](https://github.com/sync-jisan-dev/media-dock/releases/latest):
+
+* **[Download MediaDock v1.4.0 Production APK (14.0 MB)](https://github.com/sync-jisan-dev/media-dock/releases/download/v1.4.0/MediaDock-release.apk)**
+* **[Download MediaDock v1.4.0 Debug APK (18.6 MB)](https://github.com/sync-jisan-dev/media-dock/releases/download/v1.4.0/MediaDock-debug.apk)**
+
+---
 
 ---
 

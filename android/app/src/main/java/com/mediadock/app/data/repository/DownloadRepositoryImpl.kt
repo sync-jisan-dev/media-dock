@@ -1,6 +1,7 @@
 package com.mediadock.app.data.repository
 
 import android.content.Context
+import android.net.Uri
 import com.mediadock.app.core.common.FormattingUtils
 import com.mediadock.app.core.common.Resource
 import com.mediadock.app.core.database.dao.DownloadDao
@@ -9,6 +10,7 @@ import com.mediadock.app.core.database.entity.DownloadEntity
 import com.mediadock.app.core.database.entity.HistoryEntity
 import com.mediadock.app.core.datastore.PreferencesDataStore
 import com.mediadock.app.core.datastore.WorkspaceRules
+import com.mediadock.app.core.storage.StorageManager
 import com.mediadock.app.feature.browser.BrowserRules
 import com.mediadock.app.core.downloads.DownloadTransferEngine
 import com.mediadock.app.core.downloads.ForegroundTransferService
@@ -48,6 +50,7 @@ class DownloadRepositoryImpl @Inject constructor(
 ) : DownloadRepository {
 
     private val repositoryScope = CoroutineScope(Dispatchers.IO + Job())
+    private val storageManager: StorageManager by lazy { StorageManager(context) }
 
     private fun mapToDomain(entity: DownloadEntity): ActiveDownload {
         val status = try {
@@ -80,7 +83,10 @@ class DownloadRepositoryImpl @Inject constructor(
         return clean.endsWith(".mp4") || clean.endsWith(".webm") || clean.endsWith(".m4a") ||
                clean.endsWith(".mp3") || clean.endsWith(".wav") || clean.endsWith(".mov") ||
                clean.endsWith(".mkv") || clean.endsWith(".flv") || clean.endsWith(".aac") ||
-               clean.endsWith(".ogg") || clean.endsWith(".opus") || clean.endsWith(".m4v")
+               clean.endsWith(".ogg") || clean.endsWith(".opus") || clean.endsWith(".m4v") ||
+               clean.endsWith(".pdf") || clean.endsWith(".doc") || clean.endsWith(".docx") ||
+               clean.endsWith(".jpg") || clean.endsWith(".jpeg") || clean.endsWith(".png") ||
+               clean.endsWith(".gif") || clean.endsWith(".webp")
     }
 
     override suspend fun enqueueDownload(
@@ -89,12 +95,32 @@ class DownloadRepositoryImpl @Inject constructor(
         thumbnail: String?
     ): Resource<String> = withContext(Dispatchers.IO) {
         val localJobId = "job_" + System.currentTimeMillis() + "_" + (1000..9999).random()
+        val cleanUrl = request.url.trim().lowercase().substringBefore('?').substringBefore('#')
         val safeTitle = title.ifBlank {
-            BrowserRules.displayHost(request.url).ifBlank { "Media Download" }
+            BrowserRules.displayHost(request.url).ifBlank {
+                if (cleanUrl.endsWith(".pdf")) "Document Download.pdf" else "Media Download"
+            }
         }
-        val format = request.format ?: "mp4"
+        val kind = when {
+            request.kind.isNotBlank() && request.kind != "video" -> request.kind
+            cleanUrl.endsWith(".pdf") || cleanUrl.endsWith(".doc") || cleanUrl.endsWith(".docx") -> "document"
+            cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg") || cleanUrl.endsWith(".png") ||
+            cleanUrl.endsWith(".gif") || cleanUrl.endsWith(".webp") -> "image"
+            cleanUrl.endsWith(".mp3") || cleanUrl.endsWith(".m4a") || cleanUrl.endsWith(".wav") ||
+            cleanUrl.endsWith(".aac") || cleanUrl.endsWith(".ogg") || cleanUrl.endsWith(".opus") -> "audio"
+            else -> request.kind.ifBlank { "video" }
+        }
+        val format = when {
+            cleanUrl.endsWith(".pdf") -> "pdf"
+            cleanUrl.endsWith(".doc") -> "doc"
+            cleanUrl.endsWith(".docx") -> "docx"
+            cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg") -> "jpg"
+            cleanUrl.endsWith(".png") -> "png"
+            cleanUrl.endsWith(".gif") -> "gif"
+            cleanUrl.endsWith(".webp") -> "webp"
+            else -> request.format ?: "mp4"
+        }
         val quality = request.quality ?: "highest"
-        val kind = request.kind.ifBlank { "video" }
 
         val initialSpeed = 2_800_000L
         val initialBytes = 2_450_000L
@@ -158,15 +184,34 @@ class DownloadRepositoryImpl @Inject constructor(
         var transferStarted = false
         var isCancelledOrDone = false
 
-        // 1. Direct media URL shortcut (e.g., .mp4, .webm, .mp3 links from CDNs)
+        // 1. Direct media URL shortcut (e.g., .mp4, .webm, .mp3, .pdf, .jpg links from CDNs)
         if (isDirectMediaUrl(request.url)) {
+            val cleanUrl = request.url.trim().lowercase().substringBefore('?').substringBefore('#')
+            val directKind = when {
+                cleanUrl.endsWith(".pdf") || cleanUrl.endsWith(".doc") || cleanUrl.endsWith(".docx") -> "document"
+                cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg") || cleanUrl.endsWith(".png") ||
+                cleanUrl.endsWith(".gif") || cleanUrl.endsWith(".webp") -> "image"
+                cleanUrl.endsWith(".mp3") || cleanUrl.endsWith(".m4a") || cleanUrl.endsWith(".wav") ||
+                cleanUrl.endsWith(".aac") || cleanUrl.endsWith(".ogg") || cleanUrl.endsWith(".opus") -> "audio"
+                else -> kind
+            }
+            val directFormat = when {
+                cleanUrl.endsWith(".pdf") -> "pdf"
+                cleanUrl.endsWith(".doc") -> "doc"
+                cleanUrl.endsWith(".docx") -> "docx"
+                cleanUrl.endsWith(".jpg") || cleanUrl.endsWith(".jpeg") -> "jpg"
+                cleanUrl.endsWith(".png") -> "png"
+                cleanUrl.endsWith(".gif") -> "gif"
+                cleanUrl.endsWith(".webp") -> "webp"
+                else -> format
+            }
             downloadDao.updateStatus(localJobId, "DOWNLOADING")
             transferEngine.startFileTransfer(
                 jobId = localJobId,
                 fileUrl = request.url,
                 title = currentTitle,
-                mediaType = kind,
-                format = format,
+                mediaType = directKind,
+                format = directFormat,
                 totalBytes = 0L
             )
             return
@@ -505,6 +550,10 @@ class DownloadRepositoryImpl @Inject constructor(
     }
 
     override suspend fun deleteDownload(jobId: String) = withContext(Dispatchers.IO) {
+        val entity = downloadDao.getDownloadSync(jobId)
+        if (entity?.localUri != null) {
+            runCatching { storageManager.deleteMediaFile(Uri.parse(entity.localUri)) }
+        }
         transferEngine.cancelTransfer(jobId)
         downloadDao.delete(jobId)
         ForegroundTransferService.stopService(context)
@@ -512,7 +561,13 @@ class DownloadRepositoryImpl @Inject constructor(
 
     override fun getHistory(): Flow<List<HistoryEntity>> = historyDao.getAllHistory()
     override fun searchHistory(query: String): Flow<List<HistoryEntity>> = historyDao.searchHistory(query)
-    override suspend fun deleteHistory(id: Long) = historyDao.delete(id)
+    override suspend fun deleteHistory(id: Long) = withContext(Dispatchers.IO) {
+        val entity = historyDao.getById(id)
+        if (entity != null) {
+            runCatching { storageManager.deleteMediaFile(Uri.parse(entity.localUri)) }
+        }
+        historyDao.delete(id)
+    }
     override suspend fun clearHistory() = historyDao.clearAll()
     override suspend fun restoreHistory(items: List<HistoryEntity>) {
         items.forEach { historyDao.insert(it) }

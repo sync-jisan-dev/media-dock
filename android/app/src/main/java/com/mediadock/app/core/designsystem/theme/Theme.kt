@@ -10,6 +10,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
@@ -39,7 +40,7 @@ private val LightColorScheme = lightColorScheme(
     surfaceVariant = md_theme_light_surfaceVariant,
     onSurfaceVariant = md_theme_light_onSurfaceVariant,
     outline = md_theme_light_outline,
-    outlineVariant = DockPaperBorder,
+    outlineVariant = Color(0xFFE5E7EB),
     inversePrimary = BrandCoralOrange,
     inverseSurface = BrandDarkSurface,
     inverseOnSurface = BrandWhite,
@@ -80,11 +81,11 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val MediaDockShapes = Shapes(
-    extraSmall = RoundedCornerShape(8.dp),
-    small = RoundedCornerShape(12.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(20.dp),
-    extraLarge = RoundedCornerShape(26.dp)
+    extraSmall = RoundedCornerShape(CpdRadius.radiusSm),
+    small = RoundedCornerShape(CpdRadius.radiusMd),
+    medium = RoundedCornerShape(CpdRadius.radiusLg),
+    large = RoundedCornerShape(CpdRadius.radiusXl),
+    extraLarge = RoundedCornerShape(CpdRadius.radiusFull)
 )
 
 @Composable
