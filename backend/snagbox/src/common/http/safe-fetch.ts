@@ -211,12 +211,20 @@ function safeLookup(
 function defaultTransport(url: URL, options: SafeFetchOptions): Promise<HopResponse> {
   const timeoutMs = options.timeoutMs ?? 30_000;
   const request = url.protocol === "https:" ? httpsRequest : httpRequest;
+  const hasUa = Object.keys(options.headers ?? {}).some((k) => k.toLowerCase() === "user-agent");
+  const headers = hasUa
+    ? options.headers
+    : {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        ...options.headers,
+      };
   return new Promise((resolve, reject) => {
     const req = request(
       url,
       {
         method: options.method ?? "GET",
-        headers: options.headers,
+        headers,
         lookup: safeLookup as never,
         timeout: timeoutMs,
       },

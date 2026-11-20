@@ -427,6 +427,7 @@ class DownloadRepositoryImpl @Inject constructor(
         onTransferInitiated: () -> Unit
     ) {
         repositoryScope.launch {
+            var initiated = false
             try {
                 val prefs = preferencesDataStore.preferencesFlow.first()
                 val eventsUrl = prefs.serverUrl.removeSuffix("/") + "/app/v1/downloads/$remoteJobId/events"
@@ -456,6 +457,7 @@ class DownloadRepositoryImpl @Inject constructor(
                             val fileUrl = event.job?.fileUrl
                             val sizeBytes = event.job?.fileSizeBytes ?: 0L
                             if (!fileUrl.isNullOrBlank()) {
+                                initiated = true
                                 onTransferInitiated()
                                 downloadDao.updateFileUrl(localJobId, fileUrl)
                                 transferEngine.startFileTransfer(
@@ -469,6 +471,7 @@ class DownloadRepositoryImpl @Inject constructor(
                             }
                         }
                         "error" -> {
+                            initiated = true
                             onTransferInitiated()
                             val err = event.message ?: "Processing error"
                             downloadDao.updateStatus(localJobId, "FAILED", error = err)
@@ -476,8 +479,10 @@ class DownloadRepositoryImpl @Inject constructor(
                         }
                     }
                 }
-            } catch (e: Exception) {
-                // If SSE is interrupted, poll continuously as fallback until completed or failed
+            } catch (_: Exception) {}
+
+            // Fallback polling if SSE disconnects or finishes before completion
+            if (!initiated) {
                 for (pollAttempt in 1..40) {
                     delay(1500)
                     try {

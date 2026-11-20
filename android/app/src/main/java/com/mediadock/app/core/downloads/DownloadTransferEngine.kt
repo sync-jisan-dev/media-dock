@@ -104,8 +104,10 @@ class DownloadTransferEngine @Inject constructor(
                 outputStream = out
 
                 var currentStreamUrl = fullUrl
+                val browserUserAgent = "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36"
+                val refererHeader = if (currentStreamUrl.startsWith("http")) currentStreamUrl else null
                 var response = try {
-                    api.streamFile(currentStreamUrl)
+                    api.streamFile(currentStreamUrl, userAgent = browserUserAgent, referer = refererHeader)
                 } catch (e: Exception) {
                     null
                 }
@@ -120,7 +122,8 @@ class DownloadTransferEngine @Inject constructor(
                     )
                     if (heal.healed && heal.freshStreamUrl != null) {
                         currentStreamUrl = heal.freshStreamUrl
-                        response = try { api.streamFile(currentStreamUrl) } catch (_: Exception) { null }
+                        val healedReferer = if (currentStreamUrl.startsWith("http")) currentStreamUrl else null
+                        response = try { api.streamFile(currentStreamUrl, userAgent = browserUserAgent, referer = healedReferer) } catch (_: Exception) { null }
                     }
                 }
 

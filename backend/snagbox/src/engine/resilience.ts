@@ -185,16 +185,11 @@ function ladder(url: string, platform: Platform | null): Attempt[] {
         plain,
         {
           url,
-          // The base args already list the clients that dodge YouTube's
-          // proof-of-origin check, so a retry has to reach for a genuinely
-          // different set rather than a weaker one — leading with the clients
-          // that never depend on a web session, and adding the ones that
-          // sometimes carry formats the others lack.
           args: [
             "--extractor-args",
-            "youtube:player_client=tv_embedded,android_vr,android,ios,mweb,web_embedded",
+            "youtube:player_client=android,ios,mweb,web;player_skip=configs",
           ],
-          label: "non-web player clients",
+          label: "mobile and web player clients",
         },
         desktop,
       ];

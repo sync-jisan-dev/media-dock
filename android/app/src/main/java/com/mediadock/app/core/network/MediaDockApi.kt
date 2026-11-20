@@ -55,6 +55,8 @@ interface MediaDockApi {
     @GET
     suspend fun streamFile(
         @Url fileUrl: String,
-        @Header("Range") rangeHeader: String? = null
+        @Header("Range") rangeHeader: String? = null,
+        @Header("User-Agent") userAgent: String? = null,
+        @Header("Referer") referer: String? = null
     ): Response<ResponseBody>
 }
