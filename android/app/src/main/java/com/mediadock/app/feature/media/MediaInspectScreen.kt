@@ -256,7 +256,7 @@ private fun VideoTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
             Text(text = stringResource(R.string.quality), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(modifier = Modifier.height(CpdSpace.space2x))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x)) {
-                details.videoQualities.ifEmpty { listOf("highest", "1080p", "720p", "480p") }.forEach { q ->
+                details.videoQualities.ifEmpty { listOf("highest") }.forEach { q ->
                     FilterChip(
                         selected = selectedQuality == q,
                         onClick = { viewModel.selectedVideoQuality.value = q },

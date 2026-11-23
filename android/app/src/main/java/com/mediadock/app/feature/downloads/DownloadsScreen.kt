@@ -415,16 +415,17 @@ private fun DownloadItemCard(
         }
     }
 
-    val resolutionLabel = remember(item.quality, item.mediaType, item.format, item.fileSizeBytes) {
+    val resolutionLabel = remember(item.quality, item.mediaType, item.format) {
         val cleanFmt = item.format.lowercase()
+        val requestedQuality = item.quality.trim().lowercase()
         when {
             cleanFmt == "pdf" || item.mediaType.lowercase() == "document" -> "PDF"
             item.mediaType.lowercase() in listOf("image", "gif") -> if (cleanFmt == "gif") "GIF" else "High-Res"
             item.mediaType.lowercase() == "audio" -> "HQ Audio"
-            item.quality.contains("p", true) -> item.quality
-            item.fileSizeBytes > 50 * 1024 * 1024L -> "1080p FHD"
-            item.fileSizeBytes > 20 * 1024 * 1024L -> "720p HD"
-            else -> "720p HD"
+            requestedQuality.matches(Regex("\\d{3,4}p")) -> requestedQuality.uppercase()
+            requestedQuality == "highest" || requestedQuality == "original" -> "Best available"
+            requestedQuality == "lowest" -> "Smallest file"
+            else -> "Video"
         }
     }
 

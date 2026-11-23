@@ -24,7 +24,14 @@ export interface RawInfo {
   comment_count?: number;
   timestamp?: number;
   is_live?: boolean;
-  formats?: Array<{ height?: number; vcodec?: string; acodec?: string }>;
+  formats?: Array<{
+    height?: number;
+    /** Some extractors omit height but include a value such as `480p`. */
+    format_note?: string;
+    resolution?: string;
+    vcodec?: string;
+    acodec?: string;
+  }>;
   subtitles?: Record<string, Array<{ name?: string }>>;
   automatic_captions?: Record<string, Array<{ name?: string }>>;
 }
@@ -101,7 +108,9 @@ export function normalizeEntry(entry: RawEntry): CollectionEntry {
 export function normalizeInfo(raw: RawInfo, url: string, platform: Platform): MediaInfo {
   const heights = new Set<number>();
   for (const format of raw.formats ?? []) {
-    if (format.height && format.vcodec && format.vcodec !== "none") heights.add(format.height);
+    if (!format.vcodec || format.vcodec === "none") continue;
+    const height = format.height ?? parseHeight(format.resolution) ?? parseHeight(format.format_note);
+    if (height) heights.add(height);
   }
   const videoQualities = [...heights]
     .sort((a, b) => b - a)
@@ -131,7 +140,10 @@ export function normalizeInfo(raw: RawInfo, url: string, platform: Platform): Me
     qualities: {
       video: videoQualities.length
         ? (["highest", ...videoQualities, "lowest"] as VideoQuality[])
-        : (["highest", "1080p", "720p", "480p", "360p", "lowest"] as VideoQuality[]),
+        // Never advertise a fixed resolution when the extractor did not
+        // report one. `highest` delegates to the provider's actual best
+        // rendition and is the only honest choice in that situation.
+        : (["highest"] as VideoQuality[]),
       audio: [...AUDIO_QUALITIES] as AudioQuality[],
     },
     formats: {
@@ -140,6 +152,13 @@ export function normalizeInfo(raw: RawInfo, url: string, platform: Platform): Me
     },
     subtitles,
   };
+}
+
+function parseHeight(value: string | undefined): number | null {
+  const match = /(?:^|\D)(\d{3,4})p(?:\D|$)/i.exec(value ?? "");
+  if (!match) return null;
+  const height = Number(match[1]);
+  return Number.isInteger(height) && height > 0 ? height : null;
 }
 
 /**

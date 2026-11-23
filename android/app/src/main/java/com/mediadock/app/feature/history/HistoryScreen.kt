@@ -392,14 +392,12 @@ private fun LibraryCard(
     val isImage = type in listOf("image", "gif") || fmt in listOf("jpg", "jpeg", "png", "webp", "gif")
     val isAudio = type == "audio" || fmt in listOf("mp3", "m4a", "wav", "aac", "ogg", "opus")
 
-    val resolutionLabel = remember(file.mediaType, file.fileSizeBytes, file.format) {
+    val resolutionLabel = remember(file.mediaType, file.format) {
         when {
             isDoc -> "PDF"
             isImage -> if (fmt == "gif") "GIF" else "High-Res"
             isAudio -> "HQ Audio"
-            file.fileSizeBytes > 60 * 1024 * 1024L -> "1080p FHD"
-            file.fileSizeBytes > 25 * 1024 * 1024L -> "720p HD"
-            else -> "480p SD"
+            else -> "Video"
         }
     }
 
