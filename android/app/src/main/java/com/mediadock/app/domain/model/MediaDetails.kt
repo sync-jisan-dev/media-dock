@@ -7,7 +7,7 @@ data class MediaDetails(
     val title: String,
     val description: String? = null,
     val thumbnail: String? = null,
-    val durationSeconds: Long? = null,
+    val durationSeconds: Double? = null,
     val uploader: String? = null,
     val uploaderUrl: String? = null,
     val viewCount: Long? = null,

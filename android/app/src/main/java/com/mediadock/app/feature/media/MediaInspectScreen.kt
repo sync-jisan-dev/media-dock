@@ -226,7 +226,7 @@ private fun MediaHeaderCard(details: MediaDetails) {
                         color = MaterialTheme.colorScheme.onPrimary
                     ) {
                         Text(
-                            text = "⏱ ${FormattingUtils.formatDuration(details.durationSeconds)}",
+                            text = "⏱ ${FormattingUtils.formatDuration(details.durationSeconds.roundToLong())}",
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
@@ -445,7 +445,7 @@ private fun AudioTabContent(details: MediaDetails, viewModel: MediaInspectViewMo
 private fun GifTabContent(details: MediaDetails, viewModel: MediaInspectViewModel) {
     val startTime by viewModel.gifStartTime.collectAsState()
     val endTime by viewModel.gifEndTime.collectAsState()
-    val maxDuration = (details.durationSeconds ?: 60L).toFloat().coerceAtLeast(10f)
+    val maxDuration = (details.durationSeconds ?: 60.0).toFloat().coerceAtLeast(10f)
 
     LazyColumn(
         modifier = Modifier

@@ -34,7 +34,9 @@ data class MediaInfoResponseDto(
     val title: String,
     val description: String? = null,
     val thumbnail: String? = null,
-    val durationSeconds: Long? = null,
+    // yt-dlp and some provider APIs return fractional durations (for example 9.217s).
+    // Keep the value as a Double so a valid media response is not rejected by JSON decoding.
+    val durationSeconds: Double? = null,
     val uploader: String? = null,
     val uploaderUrl: String? = null,
     val viewCount: Long? = null,

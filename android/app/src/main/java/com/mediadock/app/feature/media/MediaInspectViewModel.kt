@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.math.roundToLong
 import javax.inject.Inject
 
 enum class InspectTab {
@@ -129,7 +130,7 @@ class MediaInspectViewModel @Inject constructor(
                 selectedVideoFormat.value = details.videoFormats.firstOrNull() ?: "mp4"
                 selectedAudioQuality.value = details.audioQualities.firstOrNull() ?: "best"
                 selectedAudioFormat.value = details.audioFormats.firstOrNull { it == prefs.defaultAudioFormat } ?: details.audioFormats.firstOrNull() ?: "mp3"
-                gifEndTime.value = (details.durationSeconds ?: 10L).coerceAtMost(15L)
+                gifEndTime.value = (details.durationSeconds ?: 10.0).coerceAtMost(15.0).roundToLong()
                 if (quickDownload && savedStateHandle.get<Boolean>("quickStarted") != true) {
                     savedStateHandle["quickStarted"] = true
                     when {
