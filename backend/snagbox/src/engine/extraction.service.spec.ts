@@ -43,7 +43,7 @@ function fixture() {
   const service = new ExtractionService(
     ytdlp as never, {} as never, { mediaCacheTtlMs: 0 } as never,
     {} as never, first as never, second as never, tikLiveApi as never,
-    apify as never,
+    apify as never, { name: "igramapi", supports: jest.fn().mockReturnValue(false), extract: jest.fn() } as never,
   );
   const transfer = jest.spyOn(service as any, "downloadDirect").mockResolvedValue(undefined);
   return { service, ytdlp, first, second, transfer, primaryError, apify, tikLiveApi };

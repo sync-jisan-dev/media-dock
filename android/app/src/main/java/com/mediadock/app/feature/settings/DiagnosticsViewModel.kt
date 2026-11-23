@@ -1,39 +1,47 @@
 package com.mediadock.app.feature.settings
 
-import android.os.Environment
-import android.os.StatFs
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mediadock.app.core.network.MediaDockApi
-import com.mediadock.app.domain.usecase.GetHistoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import javax.inject.Inject
 
-@HiltViewModel class DiagnosticsViewModel @Inject constructor(private val api: MediaDockApi, history: GetHistoryUseCase) : ViewModel() {
-    val library = history().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-    val checking = MutableStateFlow(false)
-    val connection = MutableStateFlow("Not checked yet")
-    val storage = MutableStateFlow(0L to 0L)
-    init { refreshStorage() }
-    fun refreshStorage() = viewModelScope.launch(Dispatchers.IO) {
-        val stats = StatFs(Environment.getExternalStorageDirectory().absolutePath)
-        storage.value = stats.availableBytes to stats.totalBytes
-    }
-    fun check() {
-        if (checking.value) return
-        checking.value = true
-        viewModelScope.launch {
+data class ServerCheck(val serverUrl: String, val result: String? = null)
+
+@HiltViewModel
+class DiagnosticsViewModel @Inject constructor(private val api: MediaDockApi) : ViewModel() {
+    private val _connection = MutableStateFlow<ServerCheck?>(null)
+    val connection = _connection.asStateFlow()
+    private var checkJob: Job? = null
+
+    fun check(serverUrl: String) {
+        if (checkJob?.isActive == true && _connection.value?.serverUrl == serverUrl) return
+        checkJob?.cancel()
+        _connection.value = ServerCheck(serverUrl)
+        checkJob = viewModelScope.launch {
             val started = System.nanoTime()
-            connection.value = try {
-                val response = withTimeout(20000) { api.checkLiveness() }
-                if (response.isSuccessful && response.body()?.get("status") == "ok") "Connected · ${(System.nanoTime() - started) / 1000000} ms"
-                else "Server responded with HTTP ${response.code()}. Try again shortly."
-            } catch (_: TimeoutCancellationException) { "No response in 20 seconds. Free hosting may be waking up." }
-            catch (e: CancellationException) { throw e }
-            catch (_: Exception) { "Could not reach the server. Check your connection and server URL." }
-            finally { checking.value = false }
+            val result = try {
+                val response = withTimeout(20_000) { api.checkLiveness() }
+                when {
+                    !response.isSuccessful -> "Server returned HTTP ${response.code()}."
+                    response.body()?.get("status") == "ok" -> "Connected · ${(System.nanoTime() - started) / 1_000_000} ms"
+                    else -> "The server returned an unexpected health response."
+                }
+            } catch (_: TimeoutCancellationException) {
+                "No response in 20 seconds. The server may still be waking up."
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                "Could not reach the server. Check the address and try again."
+            }
+            _connection.value = ServerCheck(serverUrl, result)
         }
     }
 }

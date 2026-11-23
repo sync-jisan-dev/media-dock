@@ -3,7 +3,8 @@
 
     <!-- Navigation -->
     <string name="nav_home">Home</string>
-    <string name="nav_downloads">Queue</string>
+    <string name="nav_downloads">Downloads</string>
+    <string name="downloads_tab_queue">Queue</string>
     <string name="nav_history">My files</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_explore">Browse</string>

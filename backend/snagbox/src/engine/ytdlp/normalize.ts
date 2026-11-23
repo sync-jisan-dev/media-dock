@@ -123,7 +123,7 @@ export function normalizeInfo(raw: RawInfo, url: string, platform: Platform): Me
   }
 
   return {
-    id: raw.id,
+    id: raw.id || "media",
     platform,
     url,
     title: raw.title || `${platform} media`,

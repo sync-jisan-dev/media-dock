@@ -8,6 +8,7 @@ import { TikLiveApiProvider } from "./providers/tikliveapi.provider";
 import { CobaltProvider } from "./providers/cobalt.provider";
 import { YtdlpService } from "./ytdlp.service";
 import { ApifyDownloaderService } from "./providers/apify-downloader.service";
+import { IGramApiProvider } from "./providers/igramapi.provider";
 
 @Global()
 @Module({
@@ -16,6 +17,7 @@ import { ApifyDownloaderService } from "./providers/apify-downloader.service";
     YtdlpService,
     DirectDownloadService,
     ApifyDownloaderService,
+    IGramApiProvider,
     TikTokEmbedProvider,
     TikLiveApiProvider,
     CobaltProvider,

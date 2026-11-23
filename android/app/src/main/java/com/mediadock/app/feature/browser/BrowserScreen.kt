@@ -1,6 +1,7 @@
 package com.mediadock.app.feature.browser
 
 import android.annotation.SuppressLint
+import android.graphics.Canvas
 import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
@@ -20,6 +21,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -36,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -63,9 +67,11 @@ import com.mediadock.app.feature.workspace.WorkspaceViewModel
 @Composable
 fun BrowserScreen(
     initialUrl: String,
-    onDownload: (String) -> Unit,
+    onDownload: (String, String) -> Unit,
     modifier: Modifier = Modifier,
     onSavedLinks: () -> Unit = {},
+    onNavigateHome: () -> Unit = {},
+    onBrowserContentChanged: (Boolean) -> Unit = {},
     workspace: WorkspaceViewModel = hiltViewModel(),
     browser: BrowserSessionViewModel = hiltViewModel(LocalContext.current as ComponentActivity),
     startOnEntry: Boolean = initialUrl.isBlank()
@@ -77,6 +83,7 @@ fun BrowserScreen(
 
     LaunchedEffect(initialUrl) {
         browser.initialize("")
+        onBrowserContentChanged(initialUrl.isNotBlank())
         if (!initialHandled && initialUrl.isNotBlank()) {
             if (!browser.newTab(BrowserRules.destination(initialUrl))) {
                 MediaActions.message(context, "Close a tab before opening another page.")
@@ -98,6 +105,8 @@ fun BrowserScreen(
             workspace = workspace,
             onDownload = onDownload,
             onSavedLinks = onSavedLinks,
+            onNavigateHome = onNavigateHome,
+            onBrowserContentChanged = onBrowserContentChanged,
             modifier = modifier,
             showStart = showStart
         ) { showStart = it }
@@ -110,8 +119,10 @@ private fun BrowserPage(
     tab: BrowserTab,
     browser: BrowserSessionViewModel,
     workspace: WorkspaceViewModel,
-    onDownload: (String) -> Unit,
+    onDownload: (String, String) -> Unit,
     onSavedLinks: () -> Unit,
+    onNavigateHome: () -> Unit,
+    onBrowserContentChanged: (Boolean) -> Unit,
     modifier: Modifier,
     showStart: Boolean,
     onStartChanged: (Boolean) -> Unit
@@ -121,12 +132,17 @@ private fun BrowserPage(
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val session by browser.session.collectAsState()
+    val previews by browser.previews.collectAsState()
     val saved by workspace.state.collectAsState()
 
     var startQuery by rememberSaveable { mutableStateOf("") }
     var selectedEngine by rememberSaveable { mutableStateOf("Google") }
     var address by rememberSaveable(tab.id) { mutableStateOf(tab.url) }
     var currentUrl by remember { mutableStateOf(tab.url) }
+    // Keep the last main-frame URL separate from transient media requests. A
+    // YouTube player loads a signed googlevideo transport URL in the WebView,
+    // but that URL must never become the download source.
+    var sourcePageUrl by rememberSaveable(tab.id) { mutableStateOf(tab.url) }
     var pageTitle by remember { mutableStateOf(tab.title) }
     var progress by remember { mutableStateOf(100) }
     var canGoBack by remember { mutableStateOf(false) }
@@ -142,6 +158,7 @@ private fun BrowserPage(
     var zoom by remember { mutableStateOf(tab.textZoom.toFloat()) }
     var editingAddress by remember { mutableStateOf(false) }
     var detectedMediaUrl by remember { mutableStateOf<String?>(null) }
+    var detectedMediaTitle by remember { mutableStateOf<String?>(null) }
     var adBlockEnabled by rememberSaveable { mutableStateOf(true) }
     var blockedTrackersCount by remember { mutableStateOf(0) }
     var isIncognito by rememberSaveable { mutableStateOf(false) }
@@ -234,19 +251,23 @@ private fun BrowserPage(
                     if (reqUrl.endsWith(".mp4") || reqUrl.endsWith(".webm") || reqUrl.endsWith(".m4a") ||
                         reqUrl.endsWith(".mp3") || reqUrl.contains(".m3u8") || reqUrl.contains("videoplayback")) {
                         detectedMediaUrl = request.url.toString()
+                        detectedMediaTitle = pageTitle.takeIf { it.isNotBlank() && it != "New tab" }
                     }
                     return super.shouldInterceptRequest(view, request)
                 }
                 override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                     currentUrl = url.takeIf(WorkspaceRules::validUrl).orEmpty()
                     address = currentUrl
+                    if (WorkspaceRules.validUrl(url)) sourcePageUrl = url
                     pageError = null
                     blockedTrackersCount = 0
                     detectedMediaUrl = null
+                    detectedMediaTitle = null
                     if (WorkspaceRules.validUrl(url)) browser.updateTab(tab.id) { it.copy(url = url) }
                 }
                 override fun onPageFinished(view: WebView, url: String) {
                     currentUrl = url.takeIf(WorkspaceRules::validUrl).orEmpty()
+                    if (WorkspaceRules.validUrl(url)) sourcePageUrl = url
                     canGoBack = view.canGoBack()
                     canGoForward = view.canGoForward()
                     if (pageError == null) workspace.visit(url, view.title.orEmpty())
@@ -269,7 +290,9 @@ private fun BrowserPage(
             setFindListener { active, total, done ->
                 if (done) matchCount = if (total == 0) "No matches" else "${active + 1} of $total"
             }
-            setDownloadListener { url, _, _, _, _ -> downloadCallback(url) }
+            setDownloadListener { url, _, _, _, _ ->
+                downloadCallback(url, pageTitle.takeIf { it.isNotBlank() && it != "New tab" }.orEmpty())
+            }
         }
     }
 
@@ -278,6 +301,21 @@ private fun BrowserPage(
         webView.saveState(bundle)
         browser.saveWebState(tab.id, bundle, webView.scrollY)
         CookieManager.getInstance().flush()
+    }
+
+    @Suppress("DEPRECATION")
+    fun captureTabPreview() {
+        val picture = webView.capturePicture()
+        val width = picture.width
+        val height = picture.height
+        if (width <= 1 || height <= 1) return
+        val full = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        Canvas(full).drawPicture(picture)
+        val previewWidth = 320
+        val previewHeight = (height.toFloat() * previewWidth / width).toInt().coerceAtLeast(1)
+        val preview = Bitmap.createScaledBitmap(full, previewWidth, previewHeight, true)
+        if (preview !== full) full.recycle()
+        browser.updatePreview(tab.id, preview)
     }
 
     fun closeFullscreen() {
@@ -297,6 +335,7 @@ private fun BrowserPage(
         address = target
         pageError = null
         onStartChanged(false)
+        onBrowserContentChanged(true)
         browser.navigate(target)
         webView.onResume()
         webView.loadUrl(target)
@@ -371,6 +410,7 @@ private fun BrowserPage(
             webView.canGoBack() -> webView.goBack()
             else -> {
                 onStartChanged(true)
+                onBrowserContentChanged(false)
                 webView.onPause()
             }
         }
@@ -409,6 +449,7 @@ private fun BrowserPage(
                     TextButton(onClick = {
                         browser.closeAllTabs()
                         onStartChanged(true)
+                        onBrowserContentChanged(false)
                         tabsDialog = false
                     }) {
                         Text("Close all", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelSmall)
@@ -416,64 +457,85 @@ private fun BrowserPage(
                 }
             },
             text = {
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 440.dp),
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.heightIn(min = 180.dp, max = 500.dp),
+                    horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x),
                     verticalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
                 ) {
                     items(session.tabs, key = { it.id }) { item ->
                         val isActive = item.id == session.activeId
                         Surface(
-                            shape = RoundedCornerShape(CpdRadius.radiusLg),
+                            shape = RoundedCornerShape(CpdRadius.radiusMd),
                             color = if (isActive) BrandCoralOrange.copy(alpha = 0.12f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
                             border = if (isActive) BorderStroke(CpdBorderWidth.focus, BrandCoralOrange) else BorderStroke(CpdBorderWidth.hairline * 2, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onStartChanged(item.url.isBlank())
+                                    onBrowserContentChanged(item.url.isNotBlank())
+                                    browser.selectTab(item.id)
+                                    tabsDialog = false
+                                }
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .clickable {
-                                            onStartChanged(item.url.isBlank())
-                                            browser.selectTab(item.id)
-                                            tabsDialog = false
-                                        }
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(start = CpdSpace.space2x, top = CpdSpace.space15x, end = CpdSpace.space1x),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        if (isActive) {
-                                            Surface(
-                                                shape = CircleShape,
-                                                color = BrandCoralOrange,
-                                                modifier = Modifier.size(7.dp)
-                                            ) {}
-                                            Spacer(Modifier.width(6.dp))
-                                        }
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = item.title.ifBlank { "New tab" },
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = if (isActive) FontWeight.Normal else FontWeight.Light
+                                            style = MaterialTheme.typography.labelLarge,
+                                            fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal
+                                        )
+                                        Text(
+                                            text = BrowserRules.displayHost(item.url).ifBlank { "Start page" },
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
-                                    Text(
-                                        text = BrowserRules.displayHost(item.url).ifBlank { "Start page" },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        browser.closeTab(item.id)
-                                        if (session.tabs.size <= 1) {
-                                            onStartChanged(true)
-                                        }
+                                    IconButton(
+                                        onClick = {
+                                            browser.closeTab(item.id)
+                                            if (session.tabs.size <= 1) {
+                                                onStartChanged(true)
+                                                onBrowserContentChanged(false)
+                                            }
+                                        },
+                                        modifier = Modifier.size(32.dp)
+                                    ) {
+                                        Icon(HugeIcons.Close, "Close tab", Modifier.size(16.dp))
                                     }
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(104.dp)
+                                        .padding(horizontal = CpdSpace.space2x, vertical = CpdSpace.space1x)
+                                        .clip(RoundedCornerShape(CpdRadius.radiusSm))
+                                        .background(MaterialTheme.colorScheme.surface)
                                 ) {
-                                    Icon(HugeIcons.Close, "Close tab", Modifier.size(18.dp))
+                                    val preview = previews[item.id]
+                                    if (preview != null) {
+                                        Image(
+                                            bitmap = preview.asImageBitmap(),
+                                            contentDescription = "Preview of ${item.title.ifBlank { "tab" }}",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = HugeIcons.Language,
+                                            contentDescription = null,
+                                            tint = BrandCoralOrange.copy(alpha = 0.75f),
+                                            modifier = Modifier.size(30.dp).align(Alignment.Center)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -485,6 +547,7 @@ private fun BrowserPage(
                     onClick = {
                         if (browser.newTab()) {
                             onStartChanged(true)
+                            onBrowserContentChanged(false)
                             tabsDialog = false
                         } else {
                             MediaActions.message(context, "You can keep up to 12 tabs. Close a tab first.")
@@ -887,7 +950,7 @@ private fun BrowserPage(
                                 border = BorderStroke(CpdBorderWidth.hairline * 2, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)),
                                 color = Color.Transparent,
                                 modifier = Modifier
-                                    .clickable { tabsDialog = true }
+                                    .clickable { captureTabPreview(); tabsDialog = true }
                                     .padding(horizontal = CpdSpace.space05x)
                             ) {
                                 Text(
@@ -937,7 +1000,10 @@ private fun BrowserPage(
                                                 tint = if (isBookmarked) BrandCoralOrange else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
-                                        IconButton(onClick = { downloadCallback(currentUrl); menu = false }) {
+                                        IconButton(onClick = {
+                                            downloadCallback(currentUrl, pageTitle.takeIf { it.isNotBlank() && it != "New tab" }.orEmpty())
+                                            menu = false
+                                        }) {
                                             Icon(HugeIcons.Download, "Download", tint = BrandCoralOrange)
                                         }
                                         IconButton(onClick = { webView.reload(); menu = false }) {
@@ -950,7 +1016,10 @@ private fun BrowserPage(
                                         text = { Text("New tab") },
                                         leadingIcon = { Icon(HugeIcons.PlayCircle, null) },
                                         onClick = {
-                                            if (browser.newTab()) onStartChanged(true)
+                                            if (browser.newTab()) {
+                                                onStartChanged(true)
+                                                onBrowserContentChanged(false)
+                                            }
                                             menu = false
                                         }
                                     )
@@ -1142,7 +1211,8 @@ private fun BrowserPage(
                 modifier = Modifier.weight(1f).fillMaxWidth()
             )
 
-            // Floating Media Sniffer Bar (Auto-detected video/audio stream)
+            // Contextual media download prompt. It appears only after the page
+            // exposes a playable stream (including ad or main-video streams).
             AnimatedVisibility(
                 visible = detectedMediaUrl != null,
                 enter = slideInVertically { it } + fadeIn(),
@@ -1158,25 +1228,61 @@ private fun BrowserPage(
                         modifier = Modifier.padding(horizontal = CpdSpace.space35x, vertical = CpdSpace.space2x),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(HugeIcons.PlayCircle, null, tint = Color.White, modifier = Modifier.size(CpdSize.iconLg))
+                        Icon(HugeIcons.Download, null, tint = Color.White, modifier = Modifier.size(CpdSize.iconLg))
                         Spacer(Modifier.width(CpdSpace.space2x))
                         Column(Modifier.weight(1f)) {
-                            Text("Media Stream Detected", style = MaterialTheme.typography.titleSmall, color = Color.White)
-                            Text(BrowserRules.displayHost(detectedMediaUrl ?: ""), style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text("Download this video?", style = MaterialTheme.typography.titleSmall, color = Color.White)
+                                Text(
+                                "From ${BrowserRules.displayHost(currentUrl.ifBlank { detectedMediaUrl ?: "" })}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White.copy(alpha = 0.85f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                         Button(
                             onClick = {
-                                detectedMediaUrl?.let { downloadCallback(it) }
+                                // A WebView's YouTube videoplayback URL is a short-lived,
+                                // signed transport stream. Hand the original page URL to the
+                                // cloud extractor so it can resolve a complete, playable file
+                                // and preserve the page's real title instead of saving a 31-byte
+                                // error response named after googlevideo.com.
+                                // A restored WebView may not replay onPageStarted/onPageFinished;
+                                // read its current main-frame URL at the moment of the click too.
+                                // Never select the detected transport host as the page source.
+                                val source = listOf(webView.url, sourcePageUrl, currentUrl, address).filterNotNull()
+                                    .firstOrNull { candidate ->
+                                        WorkspaceRules.validUrl(candidate) &&
+                                            !candidate.contains("googlevideo.com", ignoreCase = true) &&
+                                            !candidate.contains("videoplayback", ignoreCase = true)
+                                    }
+                                    ?: detectedMediaUrl
+                                val resolvedTitle = detectedMediaTitle?.takeIf(String::isNotBlank)
+                                    ?: pageTitle.takeIf { title -> title.isNotBlank() && title != "New tab" }
+                                    ?: webView.title?.takeIf { title -> title.isNotBlank() && title != "New tab" }
+                                    ?: tab.title.takeIf { title -> title.isNotBlank() && title != "New tab" }
+                                source?.let {
+                                    val displayTitle = resolvedTitle
+                                        ?.replace(Regex("\\s+-\\s+YouTube$"), "")
+                                        ?.trim()
+                                        .orEmpty()
+                                        .ifBlank { "Media Download" }
+                                    downloadCallback(it, displayTitle)
+                                }
                                 detectedMediaUrl = null
+                                detectedMediaTitle = null
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = BrandCoralOrange),
                             shape = RoundedCornerShape(CpdRadius.radiusFull),
                             modifier = Modifier.height(CpdSize.buttonSmall),
                             contentPadding = PaddingValues(horizontal = CpdSpace.space3x)
                         ) {
-                            Text("Download", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+                            Text("Download video", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
                         }
-                        IconButton(onClick = { detectedMediaUrl = null }) {
+                        IconButton(onClick = {
+                            detectedMediaUrl = null
+                            detectedMediaTitle = null
+                        }) {
                             Icon(HugeIcons.Close, "Dismiss", tint = Color.White, modifier = Modifier.size(CpdSize.iconMd))
                         }
                     }
@@ -1218,14 +1324,12 @@ private fun BrowserPage(
                     }
                     IconButton(
                         onClick = {
-                            onStartChanged(true)
-                            startQuery = ""
-                            webView.onPause()
+                            onNavigateHome()
                         }
                     ) {
-                        Icon(HugeIcons.Home, "Start page", tint = CpdColor.textPrimary)
+                        Icon(HugeIcons.Home, "MediaDock Home", tint = CpdColor.textPrimary)
                     }
-                    IconButton(onClick = { tabsDialog = true }) {
+                                    IconButton(onClick = { captureTabPreview(); tabsDialog = true }) {
                         Surface(
                             shape = RoundedCornerShape(CpdRadius.radiusSm),
                             border = BorderStroke(CpdBorderWidth.hairline * 2, CpdColor.textPrimary),
@@ -1237,15 +1341,6 @@ private fun BrowserPage(
                                 style = MaterialTheme.typography.labelSmall
                             )
                         }
-                    }
-                    BrandButton(
-                        onClick = { downloadCallback(currentUrl) },
-                        enabled = WorkspaceRules.validUrl(currentUrl),
-                        contentPadding = PaddingValues(horizontal = CpdSpace.space35x, vertical = CpdSpace.space2x)
-                    ) {
-                        Icon(HugeIcons.Download, null, Modifier.size(CpdSize.iconSm))
-                        Spacer(Modifier.width(CpdSpace.space15x))
-                        Text("Save")
                     }
                 }
             }
@@ -1288,7 +1383,7 @@ private fun BrowserPage(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .clip(RoundedCornerShape(CpdRadius.radiusFull))
-                            .clickable { tabsDialog = true }
+                            .clickable { captureTabPreview(); tabsDialog = true }
                             .padding(horizontal = 8.dp, vertical = 6.dp)
                     ) {
                         // Chrome-style Tab Box [ N ]
@@ -1329,6 +1424,12 @@ private fun BrowserPage(
                     // Hero Welcome
                     item {
                         Spacer(Modifier.height(CpdSpace.space2x))
+                        AppIllustration(
+                            scene = IllustrationScene.HIPPO_BROWSE,
+                            modifier = Modifier.size(132.dp),
+                            showContainer = false
+                        )
+                        Spacer(Modifier.height(CpdSpace.space1x))
                         Text(
                             text = "Your space to explore.",
                             style = MaterialTheme.typography.headlineMedium,
@@ -1501,6 +1602,7 @@ private fun BrowserPage(
                             TextButton(
                                 onClick = {
                                     onStartChanged(false)
+                                    onBrowserContentChanged(true)
                                     webView.onResume()
                                 }
                             ) {

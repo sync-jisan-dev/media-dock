@@ -16,11 +16,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.core.designsystem.components.BrandButton
+import com.mediadock.app.core.designsystem.components.AppIllustration
+import com.mediadock.app.core.designsystem.components.IllustrationScene
 import com.mediadock.app.core.designsystem.icons.HugeIcons
 import com.mediadock.app.core.designsystem.theme.*
 import com.mediadock.app.feature.browser.BrowserRules
-import kotlinx.coroutines.delay
-import java.util.Locale
 
 @Composable
 fun MediaPreparationScreen(
@@ -30,32 +30,6 @@ fun MediaPreparationScreen(
     progress: Float? = null,
     onViewQueue: (() -> Unit)? = null
 ) {
-    var seconds by remember { mutableStateOf(0) }
-    var simulatedProgress by remember { mutableStateOf(12f) }
-    var simulatedSpeed by remember { mutableStateOf(2.8f) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(500)
-            seconds++
-            if (simulatedProgress < 92f) {
-                val increment = when {
-                    simulatedProgress < 35f -> 2.4f
-                    simulatedProgress < 65f -> 1.7f
-                    simulatedProgress < 82f -> 0.9f
-                    else -> 0.4f
-                }
-                simulatedProgress = (simulatedProgress + increment).coerceAtMost(92f)
-                val jitter = (kotlin.math.sin(seconds.toDouble() * 0.4).toFloat() * 0.6f)
-                simulatedSpeed = (2.8f + jitter).coerceIn(1.8f, 3.9f)
-            }
-        }
-    }
-
-    val effectiveProgress = progress ?: simulatedProgress
-    val effectiveSpeedStr = String.format(Locale.US, "%.1f MB/s", simulatedSpeed)
-    val effectiveEta = ((100f - effectiveProgress) / 3.5f).toInt().coerceAtLeast(2)
-
     val tips = listOf(
         "A great find deserves a place. Save links to revisit later.",
         "Create collections to keep learning, music and inspiration together.",
@@ -71,6 +45,12 @@ fun MediaPreparationScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        AppIllustration(
+            scene = IllustrationScene.HIPPO_QUEUE,
+            modifier = Modifier.size(142.dp),
+            showContainer = false
+        )
+        Spacer(Modifier.height(8.dp))
         Box(
             modifier = Modifier
                 .size(80.dp)
@@ -106,39 +86,43 @@ fun MediaPreparationScreen(
         )
         Spacer(Modifier.height(24.dp))
 
-        // Determinate active progress bar that always progresses like a live download
-        LinearProgressIndicator(
-            progress = { (effectiveProgress / 100f).coerceIn(0f, 1f) },
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .height(CpdSpace.space2x)
-                .clip(RoundedCornerShape(CpdRadius.radiusSm)),
-            color = BrandCoralOrange,
-            trackColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth(0.85f)
-                .padding(top = CpdSpace.space25x),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        if (progress == null) {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .height(CpdSpace.space2x)
+                    .clip(RoundedCornerShape(CpdRadius.radiusSm)),
+                color = BrandCoralOrange,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
             Text(
-                text = "${effectiveProgress.toInt()}% downloaded",
+                text = "Preparing your media. This can take a little longer while the server wakes up.",
+                modifier = Modifier.padding(top = CpdSpace.space25x),
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            LinearProgressIndicator(
+                progress = { (progress / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .height(CpdSpace.space2x)
+                    .clip(RoundedCornerShape(CpdRadius.radiusSm)),
+                color = BrandCoralOrange,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+            Text(
+                text = "${progress.toInt()}% downloaded",
+                modifier = Modifier.padding(top = CpdSpace.space25x),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Normal,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = "$effectiveSpeedStr • ${effectiveEta}s left",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
 
         Text(
-            text = "Receiving media packets from server",
+            text = if (progress == null) "Connecting securely and checking available formats" else "Downloading from server",
             modifier = Modifier.padding(top = CpdSpace.space15x),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -188,7 +172,7 @@ fun MediaPreparationScreen(
                     )
                 }
                 AnimatedContent(
-                    targetState = (seconds / 8) % tips.size,
+                    targetState = 0,
                     label = "waitingTip"
                 ) { index ->
                     Text(

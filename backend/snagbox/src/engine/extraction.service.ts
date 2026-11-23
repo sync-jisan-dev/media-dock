@@ -3,13 +3,16 @@ import type { MediaInfo, Platform, VideoQuality } from "@snagbox/shared";
 import { AUDIO_FORMATS, AUDIO_QUALITIES, VIDEO_FORMATS, detectPlatform } from "@snagbox/shared";
 import { basename, dirname, join } from "path";
 import { AppConfigService } from "../config/app-config.service";
+import { sanitizeFilename } from "../common/utils/filename";
 import { DirectDownloadService } from "./direct-download.service";
 import { MediaCache } from "./media-cache";
 import { TikTokEmbedProvider } from "./providers/tiktok-embed.provider";
 import { TikLiveApiProvider } from "./providers/tikliveapi.provider";
 import { CobaltProvider } from "./providers/cobalt.provider";
 import { ApifyDownloaderService } from "./providers/apify-downloader.service";
+import { IGramApiProvider } from "./providers/igramapi.provider";
 import type { MediaProvider, ProviderMedia } from "./providers/types";
+import { DESKTOP_UA } from "./resilience";
 import { CancelledError, RunDownloadInput, YtdlpService } from "./ytdlp.service";
 
 /** Tries enabled cloud extraction, yt-dlp, and alternate providers in order. */
@@ -29,8 +32,9 @@ export class ExtractionService {
     tiktokEmbed: TikTokEmbedProvider,
     tikLiveApi: TikLiveApiProvider,
     private readonly apify: ApifyDownloaderService,
+    igram: IGramApiProvider,
   ) {
-    this.providers = [cobalt, tiktokEmbed, tikLiveApi];
+    this.providers = [cobalt, tiktokEmbed, tikLiveApi, igram];
   }
 
   async getMediaInfo(url: string): Promise<MediaInfo> {
@@ -70,8 +74,58 @@ export class ExtractionService {
         }
       }
       const media = await this.tryProviders(url, platform, primaryError);
-      if (!media) throw primaryError;
+      if (!media) {
+        const fallback = this.fallbackMediaInfo(url, platform ?? "generic");
+        if (fallback) {
+          this.logger.log(`Recovered metadata via direct file fallback for ${url}`);
+          return fallback;
+        }
+        throw primaryError;
+      }
       return this.toMediaInfo(media, url, platform ?? "generic");
+    }
+  }
+
+  private fallbackMediaInfo(url: string, platform: Platform): MediaInfo | null {
+    try {
+      const parsed = new URL(url);
+      const clean = parsed.pathname.toLowerCase();
+      const ext = clean.split(".").pop() || "";
+      const isDirect = /\.(mp4|webm|mkv|mov|avi|mp3|m4a|wav|aac|ogg|opus|flac|pdf|doc|docx|jpg|jpeg|png|webp|gif|svg)$/i.test(clean);
+      if (!isDirect && platform !== "generic") return null;
+
+      const filename = decodeURIComponent(parsed.pathname.split("/").pop() || "media");
+      const isImage = ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(ext);
+      const isDoc = ["pdf", "doc", "docx"].includes(ext);
+      const isAudio = ["mp3", "m4a", "wav", "aac", "ogg", "opus", "flac"].includes(ext);
+
+      return {
+        id: sanitizeFilename(filename, 40) || "media",
+        platform,
+        url,
+        title: filename || `${parsed.hostname} media`,
+        description: isDoc ? "Document Download" : isImage ? "Image Download" : isAudio ? "Audio Download" : "Media Download",
+        thumbnail: isImage ? url : null,
+        durationSeconds: null,
+        uploader: parsed.hostname,
+        uploaderUrl: `https://${parsed.hostname}`,
+        viewCount: null,
+        likeCount: null,
+        commentCount: null,
+        uploadedAt: new Date().toISOString(),
+        isLive: false,
+        qualities: {
+          video: ["highest", "1080p", "720p", "480p", "lowest"] as VideoQuality[],
+          audio: [...AUDIO_QUALITIES],
+        },
+        formats: {
+          video: [...VIDEO_FORMATS],
+          audio: [...AUDIO_FORMATS],
+        },
+        subtitles: [],
+      };
+    } catch {
+      return null;
     }
   }
 
@@ -104,7 +158,7 @@ export class ExtractionService {
    * taking even though it gives up quality selection: one playable file beats a
    * perfectly-specified failure.
    */
-  async runDownload(input: RunDownloadInput & { kind: "audio" | "video"; format: string }): Promise<void> {
+  async runDownload(input: RunDownloadInput & { kind: string; format: string }): Promise<void> {
     if (this.apify.canDownload(input)) {
       try {
         await this.apify.runDownload(input);
@@ -142,23 +196,52 @@ export class ExtractionService {
           this.logger.warn(`Provider ${provider.name} failed: ${errorText(error)}`);
         }
       }
+
+      // Final fallback for direct streams, documents, images, or generic links
+      try {
+        this.logger.log(`Attempting direct stream download fallback for: ${input.url}`);
+        await this.downloadDirect(input, input.url, {
+          "User-Agent": DESKTOP_UA,
+          Accept: "*/*",
+        });
+        this.logger.log(`Direct stream download fallback succeeded: ${input.url}`);
+        return;
+      } catch (directErr) {
+        if (directErr instanceof CancelledError || input.isCancelled?.()) throw directErr;
+        this.logger.warn(`Direct download fallback also failed: ${errorText(directErr)}`);
+      }
+
       throw primaryError;
     }
   }
 
   private async downloadDirect(
-    input: RunDownloadInput & { kind: "audio" | "video"; format: string },
+    input: RunDownloadInput & { kind: string; format: string },
     source: string,
     headers: Record<string, string>,
   ): Promise<void> {
-    // yt-dlp's output template names the container it will choose; the direct
-    // path knows it is fetching the platform's own mp4, so it resolves both the
-    // temporary and the final name up front.
     const dir = dirname(input.outputPath);
     const base = basename(input.outputPath).replace(/\.%\(ext\)s$/, "");
-    const fetched = join(dir, `${base}.src.mp4`);
-    const target = join(dir, `${base}.${input.format}`);
+    const ext = (input.format || "mp4").toLowerCase();
+    const target = join(dir, `${base}.${ext}`);
 
+    const isNonVideo =
+      input.kind === "image" ||
+      input.kind === "document" ||
+      ["pdf", "doc", "docx", "jpg", "jpeg", "png", "webp", "gif", "svg"].includes(ext);
+
+    if (isNonVideo || (input.kind === "video" && ext === "mp4")) {
+      await this.direct.download({
+        url: source,
+        outputPath: target,
+        headers,
+        onProgress: input.onProgress,
+        isCancelled: input.isCancelled,
+      });
+      return;
+    }
+
+    const fetched = join(dir, `${base}.src.mp4`);
     await this.direct.download({
       url: source,
       outputPath: fetched,
@@ -167,12 +250,7 @@ export class ExtractionService {
       isCancelled: input.isCancelled,
     });
 
-    if (input.kind === "video" && input.format === "mp4") {
-      const { rename } = await import("fs/promises");
-      await rename(fetched, target);
-      return;
-    }
-    await this.direct.convert(fetched, target, input.kind);
+    await this.direct.convert(fetched, target, input.kind === "audio" ? "audio" : "video");
   }
 
   /** Providers describe one rendition; MediaInfo has to describe the menu. */

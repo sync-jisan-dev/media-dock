@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  ALL_MEDIA_FORMATS,
   AUDIO_FORMATS,
   AUDIO_QUALITIES,
   VIDEO_FORMATS,
@@ -18,7 +19,7 @@ import {
 } from "class-validator";
 
 const ALL_QUALITIES = [...VIDEO_QUALITIES, ...AUDIO_QUALITIES];
-const ALL_FORMATS = [...VIDEO_FORMATS, ...AUDIO_FORMATS];
+const ALL_FORMATS = [...ALL_MEDIA_FORMATS];
 
 export class CreateDownloadDto {
   @ApiProperty({ example: "https://www.youtube.com/watch?v=dQw4w9WgXcQ" })
@@ -26,19 +27,19 @@ export class CreateDownloadDto {
   @MaxLength(2048)
   url!: string;
 
-  @ApiProperty({ enum: ["video", "audio"] })
-  @IsIn(["video", "audio"])
-  kind!: "video" | "audio";
+  @ApiProperty({ enum: ["video", "audio", "image", "document"] })
+  @IsIn(["video", "audio", "image", "document"])
+  kind!: "video" | "audio" | "image" | "document";
 
   @ApiPropertyOptional({ enum: ALL_QUALITIES, default: "highest / best" })
   @IsOptional()
-  @IsIn(ALL_QUALITIES)
-  quality?: (typeof ALL_QUALITIES)[number];
+  @IsString()
+  quality?: string;
 
-  @ApiPropertyOptional({ enum: ALL_FORMATS, default: "mp4 / mp3" })
+  @ApiPropertyOptional({ enum: ALL_FORMATS, default: "mp4 / mp3 / jpg / pdf" })
   @IsOptional()
-  @IsIn(ALL_FORMATS)
-  format?: (typeof ALL_FORMATS)[number];
+  @IsString()
+  format?: string;
 
   @ApiPropertyOptional({ description: "Embed thumbnail into audio file" })
   @IsOptional()

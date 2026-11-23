@@ -2,7 +2,6 @@ package com.mediadock.app.data.repository
 
 import android.content.Context
 import android.net.Uri
-import com.mediadock.app.core.common.FormattingUtils
 import com.mediadock.app.core.common.Resource
 import com.mediadock.app.core.database.dao.DownloadDao
 import com.mediadock.app.core.database.dao.HistoryDao
@@ -131,13 +130,8 @@ class DownloadRepositoryImpl @Inject constructor(
         }
         val quality = request.quality ?: "highest"
 
-        val initialSpeed = 2_800_000L
-        val initialBytes = 2_450_000L
-        val estimatedTotalBytes = 24_500_000L
-        val initialProgress = 10f
-        val initialEta = 18L
-
-        // Immediately persist the active download entity so it shows in the Queue right away with active progress
+        // Keep the job visible immediately, but show no transfer progress until
+        // the server has actually started sending bytes.
         val entity = DownloadEntity(
             jobId = localJobId,
             sourceUrl = request.url,
@@ -147,11 +141,11 @@ class DownloadRepositoryImpl @Inject constructor(
             selectedQuality = quality,
             thumbnailUrl = thumbnail,
             status = "PROCESSING",
-            progress = initialProgress,
-            downloadSpeed = initialSpeed,
-            etaSeconds = initialEta,
-            fileSizeBytes = estimatedTotalBytes,
-            downloadedBytes = initialBytes,
+            progress = 0f,
+            downloadSpeed = 0L,
+            etaSeconds = 0L,
+            fileSizeBytes = 0L,
+            downloadedBytes = 0L,
             createdAt = System.currentTimeMillis()
         )
         downloadDao.insertOrUpdate(entity)
@@ -162,12 +156,12 @@ class DownloadRepositoryImpl @Inject constructor(
             context = context,
             jobId = localJobId,
             title = safeTitle,
-            progress = initialProgress.toInt(),
-            statusText = "Downloading",
-            speed = FormattingUtils.formatSpeed(initialSpeed)
+            progress = 0,
+            statusText = "Connecting to download server…",
+            speed = ""
         )
 
-        // Launch background orchestration with simulated progressive feedback
+        // Resolve server readiness and media before reporting transfer progress.
         repositoryScope.launch {
             runDownloadPipeline(localJobId, request, safeTitle, thumbnail, kind, format, quality)
         }
@@ -186,13 +180,6 @@ class DownloadRepositoryImpl @Inject constructor(
     ) {
         var currentTitle = initialTitle
         var currentThumbnail = initialThumbnail
-        var simulatedProgress = 10f
-        var simulatedSpeed = 2_800_000L
-        val estimatedTotal = 24_500_000L
-        var simulatedBytes = 2_450_000L
-        var transferStarted = false
-        var isCancelledOrDone = false
-
         // 1. Direct media URL shortcut (e.g., .mp4, .webm, .mp3, .pdf, .jpg links from CDNs)
         if (isDirectMediaUrl(request.url)) {
             val cleanUrl = request.url.trim().lowercase().substringBefore('?').substringBefore('#')
@@ -215,6 +202,7 @@ class DownloadRepositoryImpl @Inject constructor(
                 else -> format
             }
             downloadDao.updateStatus(localJobId, "DOWNLOADING")
+            ForegroundTransferService.updateProgress(context, localJobId, currentTitle, 0, "Starting file transfer…", "")
             transferEngine.startFileTransfer(
                 jobId = localJobId,
                 fileUrl = request.url,
@@ -224,43 +212,6 @@ class DownloadRepositoryImpl @Inject constructor(
                 totalBytes = 0L
             )
             return
-        }
-
-        // 2. Progressive feedback ticker while the server wakes up and extracts media streams
-        val tickerJob = repositoryScope.launch {
-            while (simulatedProgress < 94f && !transferStarted && !isCancelledOrDone) {
-                delay(600)
-                val dbEntity = downloadDao.getDownloadSync(localJobId)
-                if (dbEntity == null || dbEntity.status in listOf("PAUSED", "CANCELLED", "COMPLETED")) {
-                    isCancelledOrDone = true
-                    break
-                }
-                if (dbEntity.status == "DOWNLOADING" && dbEntity.downloadedBytes > simulatedBytes && dbEntity.downloadSpeed > 0L) {
-                    transferStarted = true
-                    break
-                }
-                val increment = when {
-                    simulatedProgress < 35f -> 2.4f
-                    simulatedProgress < 65f -> 1.8f
-                    simulatedProgress < 85f -> 1.1f
-                    else -> 0.4f
-                }
-                simulatedProgress = (simulatedProgress + increment).coerceAtMost(94f)
-                val jitter = ((System.currentTimeMillis() % 7) - 3) * 110_000L
-                simulatedSpeed = (2_800_000L + jitter).coerceIn(1_900_000L, 4_100_000L)
-                simulatedBytes = ((simulatedProgress / 100f) * estimatedTotal).toLong()
-                val eta = if (simulatedSpeed > 0) ((estimatedTotal - simulatedBytes) / simulatedSpeed).coerceAtLeast(3L) else 10L
-
-                downloadDao.updateProgress(localJobId, simulatedProgress, simulatedSpeed, eta, simulatedBytes)
-                ForegroundTransferService.updateProgress(
-                    context = context,
-                    jobId = localJobId,
-                    title = currentTitle,
-                    progress = simulatedProgress.toInt(),
-                    statusText = "Downloading",
-                    speed = FormattingUtils.formatSpeed(simulatedSpeed)
-                )
-            }
         }
 
         try {
@@ -273,12 +224,12 @@ class DownloadRepositoryImpl @Inject constructor(
 
             if (!sessionReady) {
                 downloadDao.updateStatus(localJobId, "PROCESSING", error = "Waking cloud engine… retrying")
+                ForegroundTransferService.updateProgress(context, localJobId, currentTitle, 0, "Waking download server…", "")
                 delay(5000)
                 sessionReady = mediaRepository.ensureSession()
             }
 
             if (!sessionReady) {
-                tickerJob.cancel()
                 val err = "Could not reach media server. Check connection or tap retry."
                 downloadDao.updateStatus(localJobId, "FAILED", error = err)
                 ForegroundTransferService.failDownload(context, localJobId, currentTitle, err)
@@ -303,9 +254,8 @@ class DownloadRepositoryImpl @Inject constructor(
                 }
 
                 if (!remoteJob.fileUrl.isNullOrBlank()) {
-                    tickerJob.cancel()
-                    transferStarted = true
                     downloadDao.updateFileUrl(localJobId, remoteJob.fileUrl)
+                    downloadDao.updateStatus(localJobId, "DOWNLOADING")
                     transferEngine.startFileTransfer(
                         jobId = localJobId,
                         fileUrl = remoteJob.fileUrl,
@@ -320,23 +270,16 @@ class DownloadRepositoryImpl @Inject constructor(
                         remoteJobId = remoteJob.id,
                         title = currentTitle,
                         mediaType = kind,
-                        format = format,
-                        simulatedProgressProvider = { simulatedProgress },
-                        onTransferInitiated = {
-                            tickerJob.cancel()
-                            transferStarted = true
-                        }
+                        format = format
                     )
                 }
             } else {
-                tickerJob.cancel()
                 val rawErr = response.errorBody()?.string()
                 val err = parseError(rawErr, "Download failed (HTTP ${response.code()})")
                 downloadDao.updateStatus(localJobId, "FAILED", error = err)
                 ForegroundTransferService.failDownload(context, localJobId, currentTitle, err)
             }
         } catch (e: Exception) {
-            tickerJob.cancel()
             val err = e.localizedMessage ?: "Failed to process download"
             downloadDao.updateStatus(localJobId, "FAILED", error = err)
             ForegroundTransferService.failDownload(context, localJobId, currentTitle, err)
@@ -440,9 +383,7 @@ class DownloadRepositoryImpl @Inject constructor(
         remoteJobId: String,
         title: String,
         mediaType: String,
-        format: String,
-        simulatedProgressProvider: () -> Float,
-        onTransferInitiated: () -> Unit
+        format: String
     ) {
         repositoryScope.launch {
             var initiated = false
@@ -454,7 +395,7 @@ class DownloadRepositoryImpl @Inject constructor(
                     when (event.type) {
                         "progress" -> {
                             event.progress?.let { p ->
-                                val effectiveProgress = maxOf(simulatedProgressProvider(), p)
+                                val effectiveProgress = p
                                 downloadDao.updateProgress(
                                     jobId = localJobId,
                                     progress = effectiveProgress,
@@ -476,7 +417,7 @@ class DownloadRepositoryImpl @Inject constructor(
                             val sizeBytes = event.job?.fileSizeBytes ?: 0L
                             if (!fileUrl.isNullOrBlank()) {
                                 initiated = true
-                                onTransferInitiated()
+                                downloadDao.updateStatus(localJobId, "DOWNLOADING")
                                 downloadDao.updateFileUrl(localJobId, fileUrl)
                                 transferEngine.startFileTransfer(
                                     jobId = localJobId,
@@ -490,7 +431,6 @@ class DownloadRepositoryImpl @Inject constructor(
                         }
                         "error" -> {
                             initiated = true
-                            onTransferInitiated()
                             val err = event.message ?: "Processing error"
                             downloadDao.updateStatus(localJobId, "FAILED", error = err)
                             ForegroundTransferService.failDownload(context, localJobId, title, err)
@@ -508,7 +448,7 @@ class DownloadRepositoryImpl @Inject constructor(
                         if (poll.isSuccessful && poll.body() != null) {
                             val job = poll.body()!!
                             if (job.status == "COMPLETED" && !job.fileUrl.isNullOrBlank()) {
-                                onTransferInitiated()
+                                downloadDao.updateStatus(localJobId, "DOWNLOADING")
                                 downloadDao.updateFileUrl(localJobId, job.fileUrl)
                                 transferEngine.startFileTransfer(
                                     jobId = localJobId,
@@ -520,7 +460,6 @@ class DownloadRepositoryImpl @Inject constructor(
                                 )
                                 break
                             } else if (job.status == "FAILED") {
-                                onTransferInitiated()
                                 val err = job.error ?: "Download processing failed"
                                 downloadDao.updateStatus(localJobId, "FAILED", error = err)
                                 ForegroundTransferService.failDownload(context, localJobId, title, err)

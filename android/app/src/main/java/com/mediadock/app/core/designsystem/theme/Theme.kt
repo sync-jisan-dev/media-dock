@@ -1,6 +1,5 @@
 package com.mediadock.app.core.designsystem.theme
 
-import android.app.Activity
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -9,12 +8,8 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat
 
 private val LightColorScheme = lightColorScheme(
     primary = md_theme_light_primary,
@@ -85,7 +80,9 @@ private val MediaDockShapes = Shapes(
     small = RoundedCornerShape(CpdRadius.radiusMd),
     medium = RoundedCornerShape(CpdRadius.radiusLg),
     large = RoundedCornerShape(CpdRadius.radiusXl),
-    extraLarge = RoundedCornerShape(CpdRadius.radiusFull)
+    // Keep dialogs and large surfaces comfortably rounded without turning
+    // short/wide content into a pill that clips its text.
+    extraLarge = RoundedCornerShape(CpdRadius.radiusXl)
 )
 
 @Composable
@@ -95,17 +92,6 @@ fun MediaDockTheme(
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
     val compoundTokens = if (darkTheme) DarkCompoundColorTokens else LightCompoundColorTokens
-
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            window.navigationBarColor = compoundTokens.bgSubtleTertiary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
-        }
-    }
 
     CompositionLocalProvider(LocalCompoundColors provides compoundTokens) {
         MaterialTheme(

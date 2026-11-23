@@ -2,11 +2,9 @@ package com.mediadock.app.feature.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.mediadock.app.core.ai.MediaDockAiAgent
 import com.mediadock.app.core.datastore.AppPreferences
 import com.mediadock.app.core.datastore.ThemeMode
 import com.mediadock.app.domain.repository.SettingsRepository
-import com.mediadock.app.domain.usecase.GetHistoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -16,12 +14,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val settingsRepository: SettingsRepository,
-    private val getHistoryUseCase: GetHistoryUseCase,
-    val aiAgent: MediaDockAiAgent
+    private val settingsRepository: SettingsRepository
 ) : ViewModel() {
-
-    val aiStats = aiAgent.stats
 
     val preferences: StateFlow<AppPreferences> = settingsRepository.preferences
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppPreferences())
@@ -79,9 +73,4 @@ class SettingsViewModel @Inject constructor(
         settingsRepository.setCustomDownloadDirectoryUri(null)
     } }
 
-    fun clearAllHistory() {
-        viewModelScope.launch {
-            getHistoryUseCase.clearAll()
-        }
-    }
 }

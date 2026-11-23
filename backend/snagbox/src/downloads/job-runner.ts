@@ -69,10 +69,25 @@ export class JobRunner implements OnModuleInit {
     const record = await this.prisma.download.findUnique({ where: { id: jobId } });
     if (!record || isTerminalStatus(record.status as JobStatus)) return;
 
+    const cleanUrl = record.url.trim().toLowerCase().split("?")[0].split("#")[0];
+    const urlExt = cleanUrl.split(".").pop() || "";
+    const isDocExt = ["pdf", "doc", "docx"].includes(urlExt);
+    const isImgExt = ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(urlExt);
+    const isAudioExt = ["mp3", "m4a", "wav", "aac", "ogg", "opus", "flac"].includes(urlExt);
+
+    const inferredKind: CreateDownloadDto["kind"] =
+      record.kind === "image" || isImgExt
+        ? "image"
+        : record.kind === "document" || isDocExt
+        ? "document"
+        : record.kind === "audio" || isAudioExt
+        ? "audio"
+        : "video";
+
     const options = readJobOptions(record.options);
     const dto: CreateDownloadDto = {
       url: record.url,
-      kind: record.kind === "audio" ? "audio" : "video",
+      kind: inferredKind,
       quality: (record.quality ?? undefined) as CreateDownloadDto["quality"],
       format: (record.format ?? undefined) as CreateDownloadDto["format"],
       embedThumbnail: options.embedThumbnail,
@@ -113,8 +128,17 @@ export class JobRunner implements OnModuleInit {
       }
       if (this.queue.wasCancelled(jobId)) return;
 
-      const format = (dto.format ?? (dto.kind === "video" ? "mp4" : "mp3")) as string;
-      const quality = (dto.quality ?? (dto.kind === "video" ? "highest" : "best")) as string;
+      const defaultFormat =
+        inferredKind === "document"
+          ? (isDocExt ? urlExt : "pdf")
+          : inferredKind === "image"
+          ? (isImgExt ? urlExt : "jpg")
+          : inferredKind === "audio"
+          ? (isAudioExt ? urlExt : "mp3")
+          : "mp4";
+
+      const format = ((dto.format as string) || defaultFormat).toLowerCase();
+      const quality = (dto.quality ?? (inferredKind === "audio" ? "best" : "highest")) as string;
       const base = `${sanitizeFilename(info.title, 80)} [${quality}] ${jobId.slice(0, 8)}`;
       const expectedFilename = `${base}.${format}`;
 
@@ -260,7 +284,17 @@ export class JobRunner implements OnModuleInit {
     }
     try {
       const files = await fs.readdir(dir);
-      return files.find((file) => file.startsWith(base) && !file.endsWith(".part") && !file.endsWith(".ytdl")) ?? null;
+      const match = files.find(
+        (file) => file.startsWith(base) && !file.endsWith(".part") && !file.endsWith(".ytdl"),
+      );
+      if (!match) return null;
+      if (match.endsWith(".unknown_video") || (match.endsWith(".webm") && expectedFilename.endsWith(".mp4"))) {
+        const ext = expectedFilename.split(".").pop();
+        const corrected = `${match.replace(/\.[^.]+$/, "")}.${ext}`;
+        await fs.rename(join(dir, match), join(dir, corrected)).catch(() => null);
+        return corrected;
+      }
+      return match;
     } catch {
       return null;
     }

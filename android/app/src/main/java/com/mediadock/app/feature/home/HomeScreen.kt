@@ -25,15 +25,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mediadock.app.core.ai.AiAgentStats
 import com.mediadock.app.core.ai.AiDuplicateReport
 import com.mediadock.app.core.ai.AiLinkIntel
 import com.mediadock.app.core.designsystem.components.AsciiHeroAnimation
@@ -54,23 +50,14 @@ import com.mediadock.app.domain.model.PlatformRegistry
 ) {
     val input by viewModel.urlInput.collectAsState()
     val error by viewModel.errorMessage.collectAsState()
-    val suggestion by viewModel.clipboardSuggestion.collectAsState()
     val preset by viewModel.selectedPreset.collectAsState()
-    val latency by viewModel.cloudLatencyMs.collectAsState()
-    val recentSearches by viewModel.recentSearches.collectAsState()
-    val aiStats by viewModel.aiStats.collectAsState()
     val aiDetection by viewModel.aiDetection.collectAsState()
     val duplicateWarning by viewModel.duplicateWarning.collectAsState()
-    val focused = LocalWindowInfo.current.isWindowFocused
-    val keyboard = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
 
     var batchDialogOpen by remember { mutableStateOf(false) }
     var batchText by remember { mutableStateOf("") }
     var utilityDialogTitle by remember { mutableStateOf<String?>(null) }
     var utilityDialogPrompt by remember { mutableStateOf("") }
-
-    LaunchedEffect(focused) { if (focused) { kotlinx.coroutines.delay(250); viewModel.refreshClipboardSuggestion() } }
 
     if (batchDialogOpen) {
         val extractedBatch = com.mediadock.app.core.datastore.WorkspaceRules.extractLinks(batchText)
@@ -150,8 +137,6 @@ import com.mediadock.app.domain.model.PlatformRegistry
                     onClick = {
                         val clean = utilityDialogPrompt.trim()
                         if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(clean)) {
-                            val targetPreset = if (utilityDialogTitle?.contains("Audio", true) == true) "mp3" else preset
-                            viewModel.startDownloadWithPreset(clean, targetPreset)
                             utilityDialogTitle = null
                             utilityDialogPrompt = ""
                             onQuickDownload(clean)
@@ -171,24 +156,15 @@ import com.mediadock.app.domain.model.PlatformRegistry
     HomeLanding(
         input = input,
         error = error,
-        suggestion = suggestion,
-        preset = preset,
-        latency = latency,
-        recentSearches = recentSearches,
-        aiStats = aiStats,
         aiDetection = aiDetection,
         duplicateWarning = duplicateWarning,
         onInput = viewModel::onUrlChange,
         onClearInput = viewModel::clearUrl,
         onPaste = viewModel::pasteFromClipboard,
-        onSelectPreset = { viewModel.selectedPreset.value = it },
-        onBatchOpen = { batchDialogOpen = true },
-        onUtilityOpen = { title -> utilityDialogTitle = title; utilityDialogPrompt = "" },
         onSearch = {
             val value = input.trim()
             if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(value)) {
                 viewModel.clearUrl()
-                viewModel.startDownloadWithPreset(value, preset)
                 onQuickDownload(value)
             } else if (value.isNotBlank()) {
                 viewModel.addRecentSearch(value)
@@ -197,23 +173,8 @@ import com.mediadock.app.domain.model.PlatformRegistry
         },
         onQuickAiDownload = { url ->
             viewModel.clearUrl()
-            viewModel.startAiOptimizedDownload(url)
             onQuickDownload(url)
         },
-        onSelectRecent = { query ->
-            if (com.mediadock.app.core.datastore.WorkspaceRules.validUrl(query)) {
-                viewModel.startDownloadWithPreset(query, preset)
-                onQuickDownload(query)
-            } else {
-                viewModel.onUrlChange(query)
-            }
-        },
-        onSuggestion = { url ->
-            viewModel.dismissClipboardSuggestion()
-            viewModel.startDownloadWithPreset(url, preset)
-            onQuickDownload(url)
-        },
-        onDismissSuggestion = viewModel::dismissClipboardSuggestion,
         onBrowse = onBrowse,
         onSavedLinks = onSavedLinks,
         onLibrary = onLibrary,
@@ -225,24 +186,13 @@ import com.mediadock.app.domain.model.PlatformRegistry
 @Composable fun HomeLanding(
     input: String,
     error: String?,
-    suggestion: String?,
-    preset: String,
-    latency: Long?,
-    recentSearches: List<String>,
-    aiStats: AiAgentStats,
     aiDetection: AiLinkIntel?,
     duplicateWarning: AiDuplicateReport?,
     onInput: (String) -> Unit,
     onClearInput: () -> Unit,
     onPaste: () -> Unit,
-    onSelectPreset: (String) -> Unit,
-    onBatchOpen: () -> Unit,
-    onUtilityOpen: (String) -> Unit,
     onSearch: () -> Unit,
     onQuickAiDownload: (String) -> Unit,
-    onSelectRecent: (String) -> Unit,
-    onSuggestion: (String) -> Unit,
-    onDismissSuggestion: () -> Unit,
     onBrowse: (String) -> Unit,
     onSavedLinks: () -> Unit,
     onLibrary: () -> Unit,
@@ -252,16 +202,19 @@ import com.mediadock.app.domain.model.PlatformRegistry
 
     BoxWithConstraints(modifier.fillMaxSize().background(CpdColor.bgCanvasDefault)) {
         val contentHeight = maxHeight
-        Column(
-            Modifier
-                .fillMaxWidth()
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .heightIn(min = contentHeight)
-                .padding(horizontal = CpdSpace.space6x, vertical = CpdSpace.space4x),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = contentHeight)
+                    .padding(horizontal = CpdSpace.space6x, vertical = CpdSpace.space4x),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
 
             // Hero Wordmark with Ambient Borderless ASCII Wave
             Box(
@@ -273,7 +226,8 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 AsciiHeroAnimation(
                     modifier = Modifier.fillMaxSize(),
                     isDark = CpdColor.isDark,
-                    interactive = true
+                    interactive = true,
+                    opacity = 0.6f
                 )
                 Image(
                     painter = painterResource(if (CpdColor.isDark) R.drawable.mediadock_wordmark_dark else R.drawable.mediadock_wordmark_light),
@@ -285,40 +239,7 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 )
             }
 
-            Spacer(Modifier.height(CpdSpace.space3x))
-
-            // AI Brain Autonomous Core Status
-            Surface(
-                shape = RoundedCornerShape(CpdRadius.radiusFull),
-                color = CpdColor.bgSubtleSecondary,
-                border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
-                modifier = Modifier.padding(bottom = CpdSpace.space2x)
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(7.dp)
-                            .clip(CircleShape)
-                            .background(CpdColor.CoralRest)
-                    )
-                    Text(
-                        "AI Agent Online",
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = CpdColor.CoralRest
-                    )
-                    Text("•", style = MaterialTheme.typography.labelSmall, color = CpdColor.textDisabled)
-                    Text(
-                        "Superfast Link Detection (<1ms)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CpdColor.textSecondary
-                    )
-                }
-            }
+            Spacer(Modifier.height(CpdSpace.space2x))
 
             // Search / Paste Input
             OutlinedTextField(
@@ -520,7 +441,7 @@ import com.mediadock.app.domain.model.PlatformRegistry
                                     Icon(HugeIcons.Download, null, Modifier.size(CpdSize.iconMd))
                                     Spacer(Modifier.width(CpdSpace.space2x))
                                     Text(
-                                        "⚡ AI Fast Download (${aiDetection.suggestedFormat.uppercase()})",
+                                        "Choose quality & download",
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -528,37 +449,6 @@ import com.mediadock.app.domain.model.PlatformRegistry
                             }
                         }
                     }
-                }
-            }
-
-            // Quick Format & Quality Presets (1080p, 720p, 360p, MP3 Audio)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = CpdSpace.space2x)
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Quality:", style = MaterialTheme.typography.labelSmall, color = CpdColor.textSecondary)
-                val presets = listOf("highest" to "1080p / 4K", "720p" to "720p HD", "360p" to "360p Fast", "mp3" to "MP3 Audio")
-                presets.forEach { (key, label) ->
-                    FilterChip(
-                        selected = preset == key,
-                        onClick = { onSelectPreset(key) },
-                        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = CpdColor.CoralRest,
-                            selectedLabelColor = BrandWhite,
-                            containerColor = CpdColor.bgSubtleSecondary,
-                            labelColor = CpdColor.textSecondary
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = preset == key,
-                            borderColor = if (preset == key) CpdColor.CoralRest else CpdColor.borderInteractiveSecondary
-                        )
-                    )
                 }
             }
 
@@ -574,95 +464,6 @@ import com.mediadock.app.domain.model.PlatformRegistry
                     Icon(HugeIcons.Download, null, Modifier.size(20.dp))
                     Spacer(Modifier.width(CpdSpace.space2x))
                     Text("Download media or search", fontWeight = FontWeight.Normal)
-                }
-            }
-
-            // Quick Power Tools Drawer (Batch, Audio Extractor, M3U8, Subtitles)
-            Spacer(Modifier.height(CpdSpace.space4x))
-            FlowRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x),
-                verticalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(CpdRadius.radiusFull),
-                    color = CpdColor.bgSubtleSecondary,
-                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
-                    modifier = Modifier.clickable { onBatchOpen() }
-                ) {
-                    Row(Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(HugeIcons.Download, null, tint = CpdColor.CoralRest, modifier = Modifier.size(CpdSize.iconSm))
-                        Spacer(Modifier.width(CpdSpace.space15x))
-                        Text("Download Multiple", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false, color = CpdColor.textPrimary)
-                    }
-                }
-                Surface(
-                    shape = RoundedCornerShape(CpdRadius.radiusFull),
-                    color = CpdColor.bgSubtleSecondary,
-                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
-                    modifier = Modifier.clickable { onUtilityOpen("Extract Audio MP3") }
-                ) {
-                    Row(Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(HugeIcons.PlayCircle, null, tint = CpdColor.CoralRest, modifier = Modifier.size(CpdSize.iconSm))
-                        Spacer(Modifier.width(CpdSpace.space15x))
-                        Text("Save as Audio", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false, color = CpdColor.textPrimary)
-                    }
-                }
-                Surface(
-                    shape = RoundedCornerShape(CpdRadius.radiusFull),
-                    color = CpdColor.bgSubtleSecondary,
-                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
-                    modifier = Modifier.clickable { onUtilityOpen("M3U8 Stream Grabber") }
-                ) {
-                    Row(Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(HugeIcons.Language, null, tint = CpdColor.CoralRest, modifier = Modifier.size(CpdSize.iconSm))
-                        Spacer(Modifier.width(CpdSpace.space15x))
-                        Text("Live Stream", style = MaterialTheme.typography.labelSmall, maxLines = 1, softWrap = false, color = CpdColor.textPrimary)
-                    }
-                }
-                Surface(
-                    shape = RoundedCornerShape(CpdRadius.radiusFull),
-                    color = CpdColor.bgSubtleSecondary,
-                    border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary),
-                    modifier = Modifier.clickable { onUtilityOpen("Subtitle Extractor") }
-                ) {
-                    Row(Modifier.padding(horizontal = CpdSpace.space3x, vertical = CpdSpace.space2x), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(HugeIcons.Info, null, tint = CpdColor.CoralRest, modifier = Modifier.size(CpdSize.iconSm))
-                        Spacer(Modifier.width(CpdSpace.space15x))
-                        Text("Subtitles only", style = MaterialTheme.typography.labelSmall, color = CpdColor.textPrimary)
-                    }
-                }
-            }
-
-            // Recent Searches / Quick Links Chips
-            if (recentSearches.isNotEmpty()) {
-                Spacer(Modifier.height(CpdSpace.space3x))
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(CpdSpace.space15x),
-                    verticalArrangement = Arrangement.spacedBy(CpdSpace.space1x)
-                ) {
-                    Text(
-                        "Recent:",
-                        modifier = Modifier.padding(vertical = CpdSpace.space1x),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = CpdColor.textDisabled
-                    )
-                    recentSearches.forEach { query ->
-                        Surface(
-                            shape = CircleShape,
-                            color = CpdColor.bgSubtlePrimary,
-                            border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary.copy(alpha = 0.5f)),
-                            modifier = Modifier.clickable { onSelectRecent(query) }
-                        ) {
-                            Text(
-                                query,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = CpdColor.textSecondary,
-                                modifier = Modifier.padding(horizontal = CpdSpace.space2x, vertical = CpdSpace.space1x)
-                            )
-                        }
-                    }
                 }
             }
 
@@ -760,7 +561,10 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 }
             }
 
-            Spacer(Modifier.height(88.dp))
+                // Small breathing room above the app navbar; the column itself
+                // remains vertically centered when the content fits the viewport.
+                Spacer(Modifier.height(32.dp))
+            }
         }
     }
 }

@@ -22,11 +22,6 @@ import javax.inject.Inject
     val activeDownloads = getActiveDownloadsUseCase().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val actionError = MutableStateFlow<String?>(null)
     val busy = MutableStateFlow(false)
-    val speedLimit = MutableStateFlow("Unlimited")
-    val nightModeScheduled = MutableStateFlow(false)
-
-    fun setSpeedLimit(limit: String) { speedLimit.value = limit }
-    fun toggleNightMode() { nightModeScheduled.value = !nightModeScheduled.value }
     fun exportQueueUrls(): String = activeDownloads.value.joinToString("\n") { it.sourceUrl }
 
     private fun action(block: suspend () -> Unit) = viewModelScope.launch {
@@ -51,9 +46,8 @@ import javax.inject.Inject
     fun retryDownload(item: ActiveDownload) = bulk { retry(item) }
     fun pauseAll() = bulk { activeDownloads.value.filter { it.status == DownloadJobStatus.DOWNLOADING }.forEach { manageDownloadUseCase.pause(it.jobId) } }
     fun resumeAll() = bulk { activeDownloads.value.filter { it.status == DownloadJobStatus.PAUSED }.forEach { manageDownloadUseCase.resume(it.jobId) } }
-    fun cancelAll() = bulk { activeDownloads.value.forEach { manageDownloadUseCase.cancel(it.jobId) } }
+    fun cancelAll() = bulk { activeDownloads.value.filter { it.status.canCancelInQueue }.forEach { manageDownloadUseCase.cancel(it.jobId) } }
     fun retryFailed() = bulk { activeDownloads.value.filter { it.status == DownloadJobStatus.FAILED }.forEach { retry(it) } }
-    fun clearCompleted() = bulk { activeDownloads.value.filter { it.status == DownloadJobStatus.COMPLETED }.forEach { manageDownloadUseCase.delete(it.jobId) } }
     private fun bulk(block: suspend () -> Unit) {
         if (busy.value) return
         busy.value = true

@@ -15,11 +15,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import com.mediadock.app.core.datastore.PreferencesDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.math.roundToLong
@@ -39,20 +37,18 @@ class MediaInspectViewModel @Inject constructor(
     private val preferences: PreferencesDataStore
 ) : ViewModel() {
 
-    // Navigation has already decoded the route argument. Decoding again corrupts
-    // literal plus signs and percent-encoded data in signed media URLs.
-    private val rawUrl: String = savedStateHandle.get<String>("url").orEmpty()
-    val sourceUrl: String get() = rawUrl
-    val quickDownload: Boolean = savedStateHandle.get<Boolean>("quick") ?: false
+    val sourceUrl = savedStateHandle.getStateFlow("url", "")
+    private var quickDownload = savedStateHandle.get<Boolean>("quick") ?: false
     val quickPreparing = MutableStateFlow(quickDownload && savedStateHandle.get<Boolean>("quickStarted") != true)
+    private var inspectionJob: Job? = null
 
     val isSubmitting = MutableStateFlow(false)
     val downloadError = MutableStateFlow<String?>(null)
 
-    private val _mediaDetailsState = MutableStateFlow<Resource<MediaDetails>>(Resource.Loading)
+    private val _mediaDetailsState = MutableStateFlow<Resource<MediaDetails>>(Resource.Idle)
     val mediaDetailsState: StateFlow<Resource<MediaDetails>> = _mediaDetailsState.asStateFlow()
 
-    private val _extractedImagesState = MutableStateFlow<Resource<List<ExtractedImage>>>(Resource.Loading)
+    private val _extractedImagesState = MutableStateFlow<Resource<List<ExtractedImage>>>(Resource.Idle)
     val extractedImagesState: StateFlow<Resource<List<ExtractedImage>>> = _extractedImagesState.asStateFlow()
 
     private val _selectedTab = MutableStateFlow(InspectTab.ALL)
@@ -75,19 +71,44 @@ class MediaInspectViewModel @Inject constructor(
     // Selected Images set for batch image download
     val selectedImageIds = MutableStateFlow<Set<String>>(emptySet())
 
-    private val _navigationEvent = MutableSharedFlow<String>()
-    val navigationEvent: SharedFlow<String> = _navigationEvent.asSharedFlow()
-
     init {
-        if (rawUrl.isNotBlank()) {
-            loadMedia(rawUrl)
-        }
+        retry()
+    }
+
+    fun startInspection(url: String, quick: Boolean = false) {
+        val link = url.trim()
+        if (link.isEmpty() || link == sourceUrl.value || isSubmitting.value) return
+
+        quickDownload = quick
+        quickPreparing.value = quick
+        savedStateHandle["quick"] = quick
+        savedStateHandle["quickStarted"] = false
+        savedStateHandle["url"] = link
+        downloadError.value = null
+        _selectedTab.value = InspectTab.ALL
+        selectedImageIds.value = emptySet()
+        embedSubtitles.value = false
+        embedAudioThumbnail.value = true
+        gifStartTime.value = 0L
+        loadMedia(link)
     }
 
     fun retry() {
-        if (rawUrl.isNotBlank()) {
-            loadMedia(rawUrl)
-        }
+        if (sourceUrl.value.isNotBlank() && !isSubmitting.value) loadMedia(sourceUrl.value)
+    }
+
+    fun dismissInspection() {
+        if (!isSubmitting.value) clearInspection()
+    }
+
+    private fun clearInspection() {
+        inspectionJob?.cancel()
+        savedStateHandle["url"] = ""
+        savedStateHandle["quick"] = false
+        savedStateHandle["quickStarted"] = false
+        quickPreparing.value = false
+        _mediaDetailsState.value = Resource.Idle
+        _extractedImagesState.value = Resource.Idle
     }
 
     fun selectTab(tab: InspectTab) {
@@ -112,25 +133,26 @@ class MediaInspectViewModel @Inject constructor(
         }
     }
 
-    fun loadMedia(url: String) {
-        viewModelScope.launch {
-            _mediaDetailsState.value = Resource.Loading
-            _extractedImagesState.value = Resource.Loading
+    private fun loadMedia(url: String) {
+        inspectionJob?.cancel()
+        _mediaDetailsState.value = Resource.Loading
+        _extractedImagesState.value = Resource.Loading
 
+        inspectionJob = viewModelScope.launch {
             val inspectDeferred = async { inspectMediaUseCase(url) }
             val imagesDeferred = if (!quickDownload) async { extractImagesUseCase(url) } else null
 
             val mediaRes = inspectDeferred.await()
-            _mediaDetailsState.value = mediaRes
-
             if (mediaRes is Resource.Success) {
                 val details = mediaRes.data
                 val prefs = preferences.preferencesFlow.first()
                 selectedVideoQuality.value = details.videoQualities.firstOrNull { it == prefs.defaultVideoQuality } ?: details.videoQualities.firstOrNull() ?: "highest"
-                selectedVideoFormat.value = details.videoFormats.firstOrNull() ?: "mp4"
+                selectedVideoFormat.value = details.videoFormats.firstOrNull { it != "gif" }
+                    ?: details.videoFormats.firstOrNull() ?: "mp4"
                 selectedAudioQuality.value = details.audioQualities.firstOrNull() ?: "best"
                 selectedAudioFormat.value = details.audioFormats.firstOrNull { it == prefs.defaultAudioFormat } ?: details.audioFormats.firstOrNull() ?: "mp3"
                 gifEndTime.value = (details.durationSeconds ?: 10.0).coerceAtMost(15.0).roundToLong()
+                _mediaDetailsState.value = mediaRes
                 if (quickDownload && savedStateHandle.get<Boolean>("quickStarted") != true) {
                     savedStateHandle["quickStarted"] = true
                     when {
@@ -141,6 +163,7 @@ class MediaInspectViewModel @Inject constructor(
                 }
             } else {
                 quickPreparing.value = false
+                _mediaDetailsState.value = mediaRes
             }
             _extractedImagesState.value = if (imagesDeferred != null) imagesDeferred.await()
                 else if (mediaRes is Resource.Success && (mediaRes.data.videoFormats.isNotEmpty() || mediaRes.data.audioFormats.isNotEmpty())) Resource.Success(emptyList())
@@ -204,7 +227,7 @@ class MediaInspectViewModel @Inject constructor(
                         else -> return@launch
                     }
                 }
-                if (toDownload.isNotEmpty()) _navigationEvent.emit("downloads")
+                if (toDownload.isNotEmpty()) clearInspection()
             } finally {
                 isSubmitting.value = false
             }
@@ -217,7 +240,7 @@ class MediaInspectViewModel @Inject constructor(
         downloadError.value = null
         try {
             when (val result = createDownloadUseCase(request, title, thumbnail)) {
-                is Resource.Success -> _navigationEvent.emit("downloads")
+                is Resource.Success -> clearInspection()
                 is Resource.Error -> { downloadError.value = result.message; quickPreparing.value = false }
                 else -> Unit
             }

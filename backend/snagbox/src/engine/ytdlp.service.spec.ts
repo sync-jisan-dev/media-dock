@@ -89,6 +89,17 @@ describe("yt-dlp argument builder", () => {
     expect(args).toContain("mp4");
   });
 
+  it("selects adaptive streams up to 2160p for a 4K request", () => {
+    const args = downloadArgs(
+      service(),
+      { url, args: [], label: "default" },
+      { url, kind: "video", quality: "2160p", format: "mp4" },
+    );
+    const formatIndex = args.indexOf("-f");
+    expect(args[formatIndex + 1]).toContain("bestvideo[height<=2160]+bestaudio");
+    expect(args).toContain("--merge-output-format");
+  });
+
   it("keeps a URL that starts with a dash from being parsed as a flag", () => {
     const tricky = "--version";
     const args = downloadArgs(

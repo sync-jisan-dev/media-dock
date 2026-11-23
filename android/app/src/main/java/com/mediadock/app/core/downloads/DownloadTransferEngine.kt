@@ -133,6 +133,10 @@ class DownloadTransferEngine @Inject constructor(
 
                 val body: ResponseBody = response.body()!!
                 responseBody = body
+                val responseMime = body.contentType()?.toString()?.substringBefore(';')?.trim()?.lowercase().orEmpty()
+                check(responseMime !in setOf("text/html", "application/json", "text/plain")) {
+                    "The server returned a web page or error message instead of a media file. Retry the download."
+                }
                 val contentLength = if (body.contentLength() > 0) body.contentLength() else totalBytes
                 inputStream = body.byteStream()
 

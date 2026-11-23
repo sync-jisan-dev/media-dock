@@ -1,5 +1,6 @@
 package com.mediadock.app.feature.browser
 
+import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +19,8 @@ data class BrowserSession(val tabs: List<BrowserTab> = emptyList(), val activeId
 
 @HiltViewModel class BrowserSessionViewModel @Inject constructor(private val store: WorkspaceStore) : ViewModel() {
     val session = MutableStateFlow(BrowserSession())
+    private val _previews = MutableStateFlow<Map<String, Bitmap>>(emptyMap())
+    val previews: StateFlow<Map<String, Bitmap>> = _previews.asStateFlow()
     private val bundles = mutableMapOf<String, Bundle>()
     private val initLock = Mutex()
     suspend fun initialize(initialUrl: String) = initLock.withLock {
@@ -49,12 +52,14 @@ data class BrowserSession(val tabs: List<BrowserTab> = emptyList(), val activeId
         val current = session.value; val index = current.tabs.indexOfFirst { it.id == id }
         if (index < 0) return
         bundles.remove(id)
+        _previews.value = _previews.value - id
         val remaining = current.tabs.filterNot { it.id == id }.ifEmpty { listOf(BrowserTab()) }
         session.value = current.copy(tabs = remaining, activeId = if (current.activeId == id) remaining[index.coerceAtMost(remaining.lastIndex)].id else current.activeId)
         persist()
     }
     fun closeAllTabs() {
         bundles.clear()
+        _previews.value = emptyMap()
         val fresh = BrowserTab()
         session.value = session.value.copy(tabs = listOf(fresh), activeId = fresh.id)
         persist()
@@ -65,4 +70,10 @@ data class BrowserSession(val tabs: List<BrowserTab> = emptyList(), val activeId
         updateTab(id) { it.copy(scrollY = scrollY.coerceAtLeast(0)) }
     }
     fun restoreWebState(id: String): Bundle? = bundles[id]
+
+    fun updatePreview(id: String, bitmap: Bitmap) {
+        if (session.value.tabs.any { it.id == id }) {
+            _previews.value = _previews.value + (id to bitmap)
+        }
+    }
 }

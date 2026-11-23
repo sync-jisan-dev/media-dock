@@ -5,6 +5,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import com.mediadock.app.feature.workspace.SavedLinksScreen
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -14,13 +17,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.mediadock.app.core.designsystem.theme.MediaDockMotion
 import com.mediadock.app.feature.downloads.DownloadsScreen
+import com.mediadock.app.feature.downloads.DownloadsHub
 import com.mediadock.app.feature.browser.BrowserScreen
 import com.mediadock.app.feature.downloads.DownloadsViewModel
 import com.mediadock.app.feature.history.HistoryScreen
 import com.mediadock.app.feature.history.HistoryViewModel
 import com.mediadock.app.feature.home.HomeScreen
 import com.mediadock.app.feature.home.HomeViewModel
-import com.mediadock.app.feature.media.MediaInspectScreen
 import com.mediadock.app.feature.media.MediaInspectViewModel
 import com.mediadock.app.feature.settings.SettingsScreen
 import com.mediadock.app.feature.settings.SettingsViewModel
@@ -31,8 +34,15 @@ fun MediaDockNavHost(
     modifier: Modifier = Modifier,
     startDestination: String = Screen.Home.route,
     sharedUrl: String? = null,
-    onSharedUrlConsumed: () -> Unit = {}
+    onSharedUrlConsumed: () -> Unit = {},
+    onBrowserContentChanged: (Boolean) -> Unit = {}
 ) {
+    val inspectViewModel: MediaInspectViewModel = hiltViewModel()
+    val openInspection: (String) -> Unit = { url ->
+        inspectViewModel.startInspection(url)
+        navController.navigateToDownloads(DownloadsTab.QUEUE)
+    }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
@@ -64,13 +74,8 @@ fun MediaDockNavHost(
                     else navController.navigate(Screen.Browser.createRoute(query))
                 },
                 onSavedLinks = { navController.navigate(Screen.SavedLinks.route) },
-                onQuickDownload = { _ ->
-                    navController.navigateToTopLevel(Screen.Downloads.route)
-                },
-                onLibrary = { navController.navigateToTopLevel(Screen.History.route) },
-                onNavigateToInspect = { url ->
-                    navController.navigate(Screen.MediaInspect.createRoute(url))
-                }
+                onLibrary = { navController.navigateToDownloads(DownloadsTab.FILES) },
+                onNavigateToInspect = openInspection
             )
         }
 
@@ -78,22 +83,26 @@ fun MediaDockNavHost(
             val downloadsViewModel: DownloadsViewModel = hiltViewModel()
             BrowserScreen(
                 initialUrl = "",
-                onDownload = { url ->
-                    downloadsViewModel.startDownload(url)
-                    navController.navigateToTopLevel(Screen.Downloads.route)
+                onDownload = { url, title ->
+                    downloadsViewModel.startDownload(url, title)
+                    navController.navigateToDownloads(DownloadsTab.QUEUE)
                 },
-                onSavedLinks = { navController.navigate(Screen.SavedLinks.route) }
+                onSavedLinks = { navController.navigate(Screen.SavedLinks.route) },
+                onNavigateHome = { navController.navigateToTopLevel(Screen.Home.route) },
+                onBrowserContentChanged = onBrowserContentChanged
             )
         }
         composable(Screen.Browser.route, arguments = listOf(navArgument("url") { type = NavType.StringType })) { entry ->
             val downloadsViewModel: DownloadsViewModel = hiltViewModel()
             BrowserScreen(
                 initialUrl = entry.arguments?.getString("url").orEmpty(),
-                onDownload = { url ->
-                    downloadsViewModel.startDownload(url)
-                    navController.navigateToTopLevel(Screen.Downloads.route)
+                onDownload = { url, title ->
+                    downloadsViewModel.startDownload(url, title)
+                    navController.navigateToDownloads(DownloadsTab.QUEUE)
                 },
-                onSavedLinks = { navController.navigate(Screen.SavedLinks.route) }
+                onSavedLinks = { navController.navigate(Screen.SavedLinks.route) },
+                onNavigateHome = { navController.navigateToTopLevel(Screen.Home.route) },
+                onBrowserContentChanged = onBrowserContentChanged
             )
         }
 
@@ -103,32 +112,49 @@ fun MediaDockNavHost(
                 navArgument("url") { type = NavType.StringType },
                 navArgument("quick") { type = NavType.BoolType; defaultValue = false }
             )
-        ) {
-            val inspectViewModel: MediaInspectViewModel = hiltViewModel()
-            MediaInspectScreen(
-                viewModel = inspectViewModel,
-                onNavigateToDownloads = {
-                    navController.navigateToTopLevel(Screen.Downloads.route)
-                },
-                onNavigateToSettings = {
-                    navController.navigateToTopLevel(Screen.Settings.route)
-                }
-            )
+        ) { entry ->
+            // Resume an inspection destination restored from an older build.
+            LaunchedEffect(entry) {
+                val url = entry.arguments?.getString("url").orEmpty()
+                val quick = entry.arguments?.getBoolean("quick") == true &&
+                    entry.savedStateHandle.get<Boolean>("quickStarted") != true
+                inspectViewModel.startInspection(url, quick)
+                navController.popBackStack()
+                navController.navigateToDownloads(DownloadsTab.QUEUE)
+            }
         }
 
-        composable(Screen.Downloads.route) {
+        composable(Screen.Downloads.route) { entry ->
+            val state = entry.savedStateHandle
+            val selectedTab by state.getStateFlow(DOWNLOADS_TAB_KEY, DownloadsTab.QUEUE.name).collectAsState()
             val downloadsViewModel: DownloadsViewModel = hiltViewModel()
-            DownloadsScreen(
-                viewModel = downloadsViewModel,
-                onNavigateHome = {
-                    navController.navigateToTopLevel(Screen.Home.route)
+            val historyViewModel: HistoryViewModel = hiltViewModel()
+            DownloadsHub(
+                selectedTab = if (selectedTab == DownloadsTab.FILES.name) DownloadsTab.FILES else DownloadsTab.QUEUE,
+                onTabSelected = { state[DOWNLOADS_TAB_KEY] = it.name }
+            ) { tab, contentModifier ->
+                when (tab) {
+                    DownloadsTab.QUEUE -> DownloadsScreen(
+                        viewModel = downloadsViewModel,
+                        inspectionViewModel = inspectViewModel,
+                        onNavigateToSettings = { navController.navigateToTopLevel(Screen.Settings.route) },
+                        modifier = contentModifier
+                    )
+                    DownloadsTab.FILES -> HistoryScreen(
+                        viewModel = historyViewModel,
+                        modifier = contentModifier,
+                        onBrowse = { navController.navigate(Screen.Browser.createRoute(it)) }
+                    )
                 }
-            )
+            }
         }
 
+        // Redirect a standalone My files destination restored from an older build.
         composable(Screen.History.route) {
-            val historyViewModel: HistoryViewModel = hiltViewModel()
-            HistoryScreen(viewModel = historyViewModel, onBrowse = { navController.navigate(Screen.Browser.createRoute(it)) })
+            LaunchedEffect(Unit) {
+                navController.popBackStack(Screen.History.route, inclusive = true)
+                navController.navigateToDownloads(DownloadsTab.FILES)
+            }
         }
 
         composable(Screen.SavedLinks.route) {
@@ -137,7 +163,7 @@ fun MediaDockNavHost(
                 onBrowse = { navController.navigate(Screen.Browser.createRoute(it)) },
                 onDownload = { url ->
                     downloadsViewModel.startDownload(url)
-                    navController.navigateToTopLevel(Screen.Downloads.route)
+                    navController.navigateToDownloads(DownloadsTab.QUEUE)
                 }
             )
         }

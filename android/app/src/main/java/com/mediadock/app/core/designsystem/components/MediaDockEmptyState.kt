@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.mediadock.app.R
@@ -48,10 +49,14 @@ fun MediaDockEmptyState(
     title: String,
     message: String,
     modifier: Modifier = Modifier,
+    illustration: IllustrationScene? = null,
     actionLabel: String? = null,
     onActionClick: () -> Unit = {},
     secondaryActionLabel: String? = null,
-    onSecondaryActionClick: (() -> Unit)? = null
+    onSecondaryActionClick: (() -> Unit)? = null,
+    illustrationSize: androidx.compose.ui.unit.Dp = 168.dp,
+    titleStyle: TextStyle = MaterialTheme.typography.headlineMedium,
+    messageStyle: TextStyle = MaterialTheme.typography.bodyMedium
 ) {
     val cleanMessage = remember(message) {
         val trimmed = message.trim()
@@ -86,37 +91,45 @@ fun MediaDockEmptyState(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(96.dp)
-                    .clip(RoundedCornerShape(CpdRadius.radiusLg))
-                    .background(CpdColor.bgSubtleSecondary)
-                    .border(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary, RoundedCornerShape(CpdRadius.radiusLg)),
-                contentAlignment = Alignment.Center
-            ) {
-                AsciiHeroAnimation(
-                    modifier = Modifier.fillMaxSize(),
-                    isDark = CpdColor.isDark,
-                    interactive = true
+            if (illustration != null) {
+                AppIllustration(
+                    scene = illustration,
+                    modifier = Modifier.size(illustrationSize),
+                    showContainer = false
                 )
-                Icon(
-                    icon,
-                    null,
-                    Modifier.size(32.dp),
-                    tint = CpdColor.CoralRest
-                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .clip(RoundedCornerShape(CpdRadius.radiusLg))
+                        .background(CpdColor.bgSubtleSecondary)
+                        .border(CpdBorderWidth.hairline, CpdColor.borderInteractiveSecondary, RoundedCornerShape(CpdRadius.radiusLg)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsciiHeroAnimation(
+                        modifier = Modifier.fillMaxSize(),
+                        isDark = CpdColor.isDark,
+                        interactive = true
+                    )
+                    Icon(
+                        icon,
+                        null,
+                        Modifier.size(32.dp),
+                        tint = CpdColor.CoralRest
+                    )
+                }
             }
             Spacer(Modifier.height(CpdSpace.space4x))
             Text(
                 title,
-                style = MaterialTheme.typography.headlineMedium,
+                style = titleStyle,
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             )
             Spacer(Modifier.height(CpdSpace.space2x))
             Text(
                 cleanMessage,
-                style = MaterialTheme.typography.bodyMedium,
+                style = messageStyle,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )

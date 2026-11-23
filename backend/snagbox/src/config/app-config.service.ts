@@ -87,6 +87,10 @@ export class AppConfigService {
     return this.config.get("APIFY_API_TOKEN", { infer: true }).trim();
   }
 
+  get igramApiKey(): string {
+    return this.config.get("IGRAM_API_KEY", { infer: true }).trim();
+  }
+
   get galleryDlPath(): string {
     return this.config.get("GALLERY_DL_PATH", { infer: true }).trim() || "gallery-dl";
   }

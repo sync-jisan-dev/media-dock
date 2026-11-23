@@ -1,7 +1,7 @@
 import type { ChannelTab, Platform } from "./platforms";
 
 /** Media kinds a job can produce. */
-export type MediaKind = "video" | "audio";
+export type MediaKind = "video" | "audio" | "image" | "document";
 
 export const VIDEO_QUALITIES = [
   "2160p",
@@ -14,6 +14,7 @@ export const VIDEO_QUALITIES = [
   "144p",
   "highest",
   "lowest",
+  "original",
 ] as const;
 export type VideoQuality = (typeof VIDEO_QUALITIES)[number];
 
@@ -26,6 +27,20 @@ export type VideoFormat = (typeof VIDEO_FORMATS)[number];
 export const AUDIO_FORMATS = ["mp3", "m4a", "opus", "wav", "flac"] as const;
 export type AudioFormat = (typeof AUDIO_FORMATS)[number];
 
+export const IMAGE_FORMATS = ["jpg", "jpeg", "png", "webp", "gif", "svg"] as const;
+export type ImageFormat = (typeof IMAGE_FORMATS)[number];
+
+export const DOCUMENT_FORMATS = ["pdf", "doc", "docx"] as const;
+export type DocumentFormat = (typeof DOCUMENT_FORMATS)[number];
+
+export const ALL_MEDIA_FORMATS = [
+  ...VIDEO_FORMATS,
+  ...AUDIO_FORMATS,
+  ...IMAGE_FORMATS,
+  ...DOCUMENT_FORMATS,
+] as const;
+export type AllMediaFormat = (typeof ALL_MEDIA_FORMATS)[number];
+
 export const VIDEO_QUALITY_LABELS: Record<VideoQuality, string> = {
   "2160p": "4K Ultra HD (2160p)",
   "1440p": "2K QHD (1440p)",
@@ -37,6 +52,7 @@ export const VIDEO_QUALITY_LABELS: Record<VideoQuality, string> = {
   "144p": "144p",
   highest: "Best available",
   lowest: "Smallest file",
+  original: "Original source quality",
 };
 
 export const AUDIO_QUALITY_LABELS: Record<AudioQuality, string> = {

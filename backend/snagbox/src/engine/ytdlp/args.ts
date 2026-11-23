@@ -36,6 +36,7 @@ export function buildBaseArgs(ctx: YtdlpArgContext, playlist = false): string[] 
     "--no-warnings",
     "--restrict-filenames",
     "--ignore-config",
+    "--no-check-certificates",
     "--socket-timeout",
     "15",
     "--retries",
@@ -72,9 +73,10 @@ export function filterAttemptArgs(extraArgs: string[], attempt: Attempt): string
 }
 
 export function videoFormatSelector(quality: VideoQuality): string {
-  if (quality === "highest") return "bestvideo*+bestaudio/best";
+  if (quality === "highest" || (quality as string) === "original") return "bestvideo*+bestaudio/best";
   if (quality === "lowest") return "worstvideo*+worstaudio/worst";
   const height = parseInt(quality, 10);
+  if (isNaN(height)) return "bestvideo*+bestaudio/best";
   return `bestvideo[height<=${height}]+bestaudio/best[height<=${height}]/best`;
 }
 
@@ -106,6 +108,16 @@ export function buildDownloadArgs(
     outputPath,
   ];
 
+  const formatStr = (request.format || "").toLowerCase();
+  const isImageOrDoc =
+    request.kind === "image" ||
+    request.kind === "document" ||
+    ["jpg", "jpeg", "png", "webp", "pdf", "doc", "docx"].includes(formatStr);
+
+  const isDirectGif =
+    formatStr === "gif" &&
+    attempt.url.toLowerCase().split("?")[0].endsWith(".gif");
+
   if (request.kind === "audio") {
     const format = (request.format as AudioFormat) ?? "mp3";
     const quality = (request.quality as AudioQuality) ?? "best";
@@ -116,17 +128,28 @@ export function buildDownloadArgs(
       "--audio-format",
       AUDIO_FORMATS.includes(format) ? format : "mp3",
       "--audio-quality",
-      AUDIO_QUALITY_ARG[quality] ?? "0",
+      AUDIO_QUALITY_ARG[quality as AudioQuality] ?? "0",
     );
     if (request.embedThumbnail) args.push("--embed-thumbnail", "--convert-thumbnails", "jpg");
     if (request.embedMetadata || request.embedThumbnail) args.push("--embed-metadata");
     if (request.embedChapters) args.push("--embed-chapters");
+  } else if (isImageOrDoc) {
+    // Direct file, image, or document: do not merge or force video container
+    args.push("-f", "best/bestvideo+bestaudio/b/0");
+  } else if (isDirectGif) {
+    // Already a direct gif file: download as-is without recoding
+    args.push("-f", "best/b/0");
   } else {
     const format = (request.format as VideoFormat) ?? "mp4";
     const quality = (request.quality as VideoQuality) ?? "highest";
     const container = VIDEO_FORMATS.includes(format) ? format : "mp4";
-    args.push("-f", videoFormatSelector(quality), "--merge-output-format", container === "gif" ? "mp4" : container);
-    if (container === "gif") args.push("--recode-video", "gif");
+    // Fallback chain so single progressive video streams or generic site embeds don't fail
+    args.push("-f", `${videoFormatSelector(quality)}/best/b/0`);
+    if (container === "gif") {
+      args.push("--recode-video", "gif");
+    } else {
+      args.push("--merge-output-format", container);
+    }
     if (request.videoCodec === "h264") {
       args.push("--recode-video", "mp4", "--postprocessor-args", "ffmpeg:-c:v libx264 -c:a aac");
     }

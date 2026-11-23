@@ -29,10 +29,10 @@ export function isTerminalStatus(status: JobStatus): boolean {
 export interface CreateDownloadRequest {
   url: string;
   kind: MediaKind;
-  /** Video quality (kind=video) or audio quality (kind=audio). */
-  quality?: VideoQuality | AudioQuality;
-  /** Output container/codec. */
-  format?: VideoFormat | AudioFormat;
+  /** Video quality (kind=video) or audio quality (kind=audio) or original. */
+  quality?: VideoQuality | AudioQuality | string;
+  /** Output container/codec/extension. */
+  format?: VideoFormat | AudioFormat | string;
   /** Embed thumbnail into audio/video files. */
   embedThumbnail?: boolean;
   /** Embed rich metadata and tags (ID3/MP4). */

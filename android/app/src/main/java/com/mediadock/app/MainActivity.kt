@@ -1,7 +1,13 @@
 package com.mediadock.app
 
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
+import androidx.lifecycle.lifecycleScope
+import com.mediadock.app.core.network.BackendConnection
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -19,6 +25,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -28,8 +35,10 @@ import com.mediadock.app.core.datastore.ThemeMode
 import com.mediadock.app.core.designsystem.components.MediaDockBottomBar
 import com.mediadock.app.core.designsystem.theme.MediaDockTheme
 import com.mediadock.app.domain.usecase.GetActiveDownloadsUseCase
+import com.mediadock.app.feature.navigation.DownloadsTab
 import com.mediadock.app.feature.navigation.MediaDockNavHost
 import com.mediadock.app.feature.navigation.Screen
+import com.mediadock.app.feature.navigation.navigateToDownloads
 import com.mediadock.app.feature.navigation.navigateToTopLevel
 import com.mediadock.app.feature.navigation.topLevelRoutes
 import dagger.hilt.android.AndroidEntryPoint
@@ -43,6 +52,11 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var getActiveDownloadsUseCase: GetActiveDownloadsUseCase
+
+    @Inject
+    lateinit var backendConnection: BackendConnection
+
+    private var backendWarmupJob: Job? = null
 
     private var sharedUrl by mutableStateOf<String?>(null)
     private var openQueueRequested by mutableStateOf(false)
@@ -93,24 +107,37 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val navBackStackEntry by navController.currentBackStackEntryAsState()
                 val currentRoute = navBackStackEntry?.destination?.route
+                var browserContentActive by remember { mutableStateOf(false) }
 
                 LaunchedEffect(sharedUrl) { if (!sharedUrl.isNullOrBlank()) navController.navigateToTopLevel(Screen.Home.route) }
                 LaunchedEffect(openQueueRequested) {
                     if (openQueueRequested) {
                         openQueueRequested = false
-                        navController.navigateToTopLevel(Screen.Downloads.route)
+                        navController.navigateToDownloads(DownloadsTab.QUEUE)
+                    }
+                }
+                LaunchedEffect(currentRoute) {
+                    if (currentRoute != Screen.Explore.route && currentRoute != Screen.Browser.route) {
+                        browserContentActive = false
                     }
                 }
                 val isRootScreen = currentRoute in topLevelRoutes
+                // Keep the app navbar on Browse's start page. Once a real web page
+                // is open, the browser becomes immersive and owns the full viewport.
+                val showAppBottomBar = isRootScreen && !(currentRoute == Screen.Explore.route && browserContentActive)
                 val pageColor = if (currentRoute == Screen.Home.route || currentRoute == Screen.Explore.route || currentRoute == Screen.Browser.route) browserPageColor() else androidx.compose.material3.MaterialTheme.colorScheme.background
-                val navBarColor = if (isRootScreen) (if (darkTheme) androidx.compose.ui.graphics.Color(0xFF161618) else androidx.compose.ui.graphics.Color(0xFFFFFFFF)) else pageColor
                 val view = LocalView.current
                 SideEffect {
                     window.statusBarColor = pageColor.toArgb()
-                    window.navigationBarColor = navBarColor.toArgb()
+                    // Let the Scaffold's page color continue behind the system gesture handle.
+                    window.navigationBarColor = android.graphics.Color.TRANSPARENT
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        window.isNavigationBarContrastEnforced = false
+                    }
                     val insets = WindowCompat.getInsetsController(window, view)
-                    insets.isAppearanceLightStatusBars = pageColor.luminance() > .5f
-                    insets.isAppearanceLightNavigationBars = navBarColor.luminance() > .5f
+                    val lightPage = pageColor.luminance() > .5f
+                    insets.isAppearanceLightStatusBars = lightPage
+                    insets.isAppearanceLightNavigationBars = lightPage
                 }
 
                 Scaffold(
@@ -118,7 +145,7 @@ class MainActivity : ComponentActivity() {
                     containerColor = pageColor,
                     contentColor = androidx.compose.material3.MaterialTheme.colorScheme.onBackground,
                     bottomBar = {
-                        if (isRootScreen) {
+                        if (showAppBottomBar) {
                             MediaDockBottomBar(
                                 currentRoute = currentRoute,
                                 onNavigateToRoute = { route ->
@@ -133,7 +160,8 @@ class MainActivity : ComponentActivity() {
                         navController = navController,
                         modifier = Modifier.padding(innerPadding),
                         sharedUrl = sharedUrl,
-                        onSharedUrlConsumed = { sharedUrl = null }
+                        onSharedUrlConsumed = { sharedUrl = null },
+                        onBrowserContentChanged = { browserContentActive = it }
                     )
                 }
             }
@@ -143,6 +171,17 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         handleIncomingIntent(intent)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        // Wake a sleeping Render instance as soon as the app becomes visible.
+        // BackendConnection coalesces concurrent probes and caches readiness, so
+        // link inspection can reuse this warm-up instead of starting another wait.
+        backendWarmupJob?.cancel()
+        backendWarmupJob = lifecycleScope.launch(Dispatchers.IO) {
+            runCatching { backendConnection.awaitReady() }
+        }
     }
 
     private fun handleIncomingIntent(intent: Intent?) {

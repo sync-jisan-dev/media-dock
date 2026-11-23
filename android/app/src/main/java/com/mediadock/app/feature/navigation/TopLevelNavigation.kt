@@ -4,8 +4,17 @@ import androidx.navigation.NavHostController
 
 internal val topLevelRoutes = setOf(
     Screen.Home.route, Screen.Explore.route, Screen.Downloads.route,
-    Screen.History.route, Screen.Settings.route
+    Screen.Settings.route
 )
+
+internal enum class DownloadsTab { QUEUE, FILES }
+
+internal const val DOWNLOADS_TAB_KEY = "downloads_tab"
+
+internal fun NavHostController.navigateToDownloads(tab: DownloadsTab) {
+    navigateToTopLevel(Screen.Downloads.route)
+    currentBackStackEntry?.savedStateHandle?.set(DOWNLOADS_TAB_KEY, tab.name)
+}
 
 /** Shared by the bottom bar and shortcuts so tabs never create duplicate root screens. */
 fun NavHostController.navigateToTopLevel(route: String) {

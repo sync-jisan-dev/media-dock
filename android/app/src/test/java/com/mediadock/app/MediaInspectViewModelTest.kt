@@ -107,4 +107,36 @@ class MediaInspectViewModelTest {
         advanceUntilIdle()
         coVerify(exactly = 0) { create(any(), any(), any()) }
     }
+
+    @Test fun queueInspectionPublishesLoadingAndReplacesAnOlderLookup() = runTest(dispatcher) {
+        val nextUrl = "https://example.com/second-video"
+        val next = details.copy(url = nextUrl, title = "Second video")
+        val oldLookup = CompletableDeferred<Resource<MediaDetails>>()
+        coEvery { inspect(url) } coAnswers { oldLookup.await() }
+        coEvery { inspect(nextUrl) } returns Resource.Success(next)
+        coEvery { images(any()) } returns Resource.Success(emptyList())
+        val model = MediaInspectViewModel(SavedStateHandle(), inspect, images, create, downloadImage, preferences)
+
+        model.startInspection(url)
+        assertEquals(url, model.sourceUrl.value)
+        assertEquals(Resource.Loading, model.mediaDetailsState.value)
+        runCurrent()
+        model.startInspection(nextUrl)
+        oldLookup.complete(Resource.Success(details))
+        advanceUntilIdle()
+        assertEquals(nextUrl, model.sourceUrl.value)
+        assertEquals(Resource.Success(next), model.mediaDetailsState.value)
+    }
+
+    @Test fun successfullyQueuedMediaClearsTheInspectionCard() = runTest(dispatcher) {
+        coEvery { inspect(url) } returns Resource.Success(details)
+        coEvery { images(url) } returns Resource.Success(emptyList())
+        coEvery { create(any(), any(), any()) } returns Resource.Success("job-id")
+        val model = viewModel()
+        advanceUntilIdle()
+        model.downloadVideo(details)
+        advanceUntilIdle()
+        assertEquals("", model.sourceUrl.value)
+        assertEquals(Resource.Idle, model.mediaDetailsState.value)
+    }
 }

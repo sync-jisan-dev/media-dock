@@ -125,7 +125,7 @@ class ForegroundTransferService : Service() {
         when (action) {
             ACTION_START -> {
                 activeJobTitles[jobId] = title
-                val notif = buildProgressNotification(title, 5, "Connecting to media server...", "")
+                val notif = buildProgressNotification(title, 0, "Connecting to media server...", "")
                 promoteToForeground(notif)
             }
             ACTION_UPDATE -> {
@@ -222,8 +222,10 @@ class ForegroundTransferService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val waitingForServer = progress <= 0 && statusText.isNotBlank()
         val displayText = when {
             statusText.isNotBlank() && speed.isNotBlank() -> "$statusText • $speed ($progress%)"
+            waitingForServer -> statusText
             statusText.isNotBlank() -> "$statusText ($progress%)"
             speed.isNotBlank() -> "$progress% • $speed"
             else -> "Downloading • $progress%"
@@ -233,7 +235,7 @@ class ForegroundTransferService : Service() {
             .setContentTitle(title)
             .setContentText(displayText)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setProgress(100, progress.coerceIn(0, 100), false)
+            .setProgress(100, progress.coerceIn(0, 100), waitingForServer)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setCategory(NotificationCompat.CATEGORY_PROGRESS)

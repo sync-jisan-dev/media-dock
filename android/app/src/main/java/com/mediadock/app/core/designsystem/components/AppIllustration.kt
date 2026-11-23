@@ -1,18 +1,15 @@
 package com.mediadock.app.core.designsystem.components
 
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -22,6 +19,11 @@ import com.mediadock.app.R
 import com.mediadock.app.core.designsystem.theme.*
 
 enum class IllustrationScene(val drawable: Int) {
+    HIPPO_MEDIA(R.drawable.hippo_media),
+    HIPPO_BROWSE(R.drawable.hippo_browse),
+    HIPPO_QUEUE(R.drawable.hippo_queue),
+    HIPPO_ERROR(R.drawable.hippo_error),
+    HIPPO_LIBRARY(R.drawable.hippo_library),
     HOME(R.drawable.illustration_home),
     DOWNLOADS(R.drawable.illustration_downloads),
     ROVER_STREAM(R.drawable.illustration_rover_stream),
@@ -38,17 +40,8 @@ enum class IllustrationScene(val drawable: Int) {
 @Composable fun AppIllustration(
     scene: IllustrationScene,
     modifier: Modifier = Modifier,
-    enableMotion: Boolean = true,
     showContainer: Boolean = true
 ) {
-    val motion = rememberInfiniteTransition(label = "cosmicIllustration")
-    val offset by motion.animateFloat(
-        initialValue = -3f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "illustrationFloat"
-    )
-
     val containerModifier = if (showContainer) {
         modifier
             .clip(RoundedCornerShape(CpdRadius.radiusXl))
@@ -62,18 +55,13 @@ enum class IllustrationScene(val drawable: Int) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(scene.drawable)
-                .crossfade(true)
+                .crossfade(false)
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(if (showContainer) 12.dp else 4.dp)
-                .graphicsLayer {
-                    if (enableMotion) {
-                        translationY = offset.dp.toPx()
-                    }
-                }
         )
     }
 }

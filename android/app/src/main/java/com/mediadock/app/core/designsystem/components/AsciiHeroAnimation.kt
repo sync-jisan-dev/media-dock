@@ -57,7 +57,8 @@ fun AsciiHeroAnimation(
         .fillMaxWidth()
         .height(130.dp),
     isDark: Boolean = CpdColor.isDark,
-    interactive: Boolean = true
+    interactive: Boolean = true,
+    opacity: Float = 0.16f
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "asciiClock")
     val time by infiniteTransition.animateFloat(
@@ -167,8 +168,9 @@ fun AsciiHeroAnimation(
                             val edgeFade = (edgeDistX.coerceIn(0f, 1f) * edgeDistY.coerceIn(0f, 1f))
 
                             // Subtle airy opacity requested by user
-                            val baseAlpha = (0.035f + combinedIntensity * 0.12f) * edgeFade
-                            val scrambleAlpha = (0.16f + scrambleBonus * 0.28f) * edgeFade
+                            val maxOpacity = opacity.coerceIn(0f, 1f)
+                            val baseAlpha = (maxOpacity * 0.22f + combinedIntensity * maxOpacity * 0.78f) * edgeFade
+                            val scrambleAlpha = (maxOpacity * 0.72f + scrambleBonus * maxOpacity * 0.28f) * edgeFade
                             val alpha = if (scrambleBonus > 0.1f) scrambleAlpha else baseAlpha
 
                             val resolvedColor = when {

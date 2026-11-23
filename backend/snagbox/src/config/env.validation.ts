@@ -60,7 +60,7 @@ export const envSchema = z.object({
   /** Expose /docs (Swagger). On unless set to false. */
   SWAGGER_ENABLED: booleanish("true"),
   /** Accept any public http(s) URL yt-dlp supports, not only the built-in platforms. */
-  ALLOW_GENERIC_URLS: booleanish("false"),
+  ALLOW_GENERIC_URLS: booleanish("true"),
   /** HMAC secret for job webhooks. Empty uses FILE_LINK_SECRET, then BETTER_AUTH_SECRET. */
   WEBHOOK_SECRET: z.string().optional().default(""),
   THROTTLE_TTL_SECONDS: z.coerce.number().int().positive().default(60),
@@ -120,6 +120,8 @@ export const envSchema = z.object({
   TIKLIVEAPI_API_KEY: z.string().trim().optional().default(""),
   APIFY_ENABLED: booleanish("false"),
   APIFY_API_TOKEN: z.string().optional().default(""),
+  /** Optional IGramAPI fallback for public Facebook and Instagram videos. */
+  IGRAM_API_KEY: z.string().optional().default(""),
   /** gallery-dl executable used by the image gallery extractor. */
   GALLERY_DL_PATH: z.string().optional().default("gallery-dl"),
   FFMPEG_PATH: z.string().optional().default(""),
