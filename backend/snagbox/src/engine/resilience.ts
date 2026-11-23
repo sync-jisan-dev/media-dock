@@ -180,20 +180,6 @@ function ladder(url: string, platform: Platform | null): Attempt[] {
         },
       ];
 
-    case "youtube":
-      return [
-        plain,
-        {
-          url,
-          args: [
-            "--extractor-args",
-            "youtube:player_client=android,ios,mweb,web;player_skip=configs",
-          ],
-          label: "mobile and web player clients",
-        },
-        desktop,
-      ];
-
     default:
       return [plain, desktop];
   }

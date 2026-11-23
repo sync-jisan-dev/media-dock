@@ -1,4 +1,4 @@
-import { buildDownloadArgs, type YtdlpArgContext } from "./args";
+import { buildBaseArgs, buildDownloadArgs, type YtdlpArgContext } from "./args";
 
 const ctx: YtdlpArgContext = {
   verbose: false,
@@ -15,6 +15,12 @@ const ctx: YtdlpArgContext = {
 
 describe("download output options", () => {
   const attempt = { url: "https://vimeo.com/1", args: [] as string[], label: "default" };
+
+  it("keeps yt-dlp's default YouTube clients and player configuration", () => {
+    const args = buildBaseArgs({ ...ctx, jsRuntime: "node" });
+    expect(args).toContain("--js-runtimes");
+    expect(args.join(" ")).not.toMatch(/player_client=|player_skip=/);
+  });
 
   it("recodes a gif and forces H.264 when asked", () => {
     const gif = buildDownloadArgs(ctx, attempt, { url: attempt.url, kind: "video", format: "gif" }, "/tmp/out.%(ext)s");

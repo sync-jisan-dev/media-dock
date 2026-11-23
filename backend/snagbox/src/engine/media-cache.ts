@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type { MediaInfo } from "@snagbox/shared";
+import { detectPlatform } from "@snagbox/shared";
 import { RedisService } from "../redis/redis.service";
 
 interface Entry<T> {
@@ -74,6 +75,7 @@ export class MediaCache {
   }
 
   private key(url: string): string {
-    return `media:${url}`;
+    // Discard YouTube menus cached with the old, restricted player selection.
+    return detectPlatform(url) === "youtube" ? `media:youtube:v2:${url}` : `media:${url}`;
   }
 }

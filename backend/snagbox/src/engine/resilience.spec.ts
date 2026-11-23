@@ -35,8 +35,7 @@ describe("attempt ladder", () => {
     const youtube = buildAttempts("https://www.youtube.com/watch?v=abc", "youtube", 2);
     expect(youtube).toHaveLength(2);
     expect(youtube[0]).toMatchObject({ label: "default", args: [] });
-    expect(youtube[1].label).toBe("non-web player clients");
-    expect(youtube[1].args.join(" ")).toContain("player_client=");
+    expect(youtube[1]).toMatchObject({ label: "desktop UA", args: ["--user-agent", expect.any(String)] });
 
     const tiktok = buildAttempts("https://www.tiktok.com/@u/video/123456789", "tiktok", 3);
     expect(tiktok.map((step) => step.label)).toEqual([

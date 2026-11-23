@@ -9,13 +9,6 @@ import { AUDIO_FORMATS, VIDEO_FORMATS, detectPlatform } from "@snagbox/shared";
 import { PROGRESS_TEMPLATE } from "../progress";
 import type { Attempt } from "../resilience";
 
-/**
- * YouTube player clients, in the order yt-dlp should try them.
- * Leading with android & ios bypasses the web bot challenge ("Sign in to confirm you're not a bot")
- * on cloud/server datacenter IPs while still extracting maximum format availability.
- */
-export const YOUTUBE_CLIENTS = "android,ios,web";
-
 const AUDIO_QUALITY_ARG: Record<AudioQuality, string> = {
   best: "0",
   high: "2",
@@ -57,7 +50,6 @@ export function buildBaseArgs(ctx: YtdlpArgContext, playlist = false): string[] 
   if (ctx.verbose) args.push("-v");
   if (ctx.jsRuntime) args.push("--js-runtimes", ctx.jsRuntime, "--remote-components", "ejs:github");
   if (ctx.pluginDir) args.push("--plugin-dirs", "default", "--plugin-dirs", ctx.pluginDir);
-  args.push("--extractor-args", `youtube:player_client=${YOUTUBE_CLIENTS};player_skip=configs`);
   if (ctx.potBaseUrl) {
     args.push("--extractor-args", `youtubepot-bgutilhttp:base_url=${ctx.potBaseUrl}`);
   }
