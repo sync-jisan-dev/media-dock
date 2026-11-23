@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.mediadock.app.core.ai.AiAgentStats
 import com.mediadock.app.core.ai.AiDuplicateReport
 import com.mediadock.app.core.ai.AiLinkIntel
@@ -322,9 +323,16 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 onValueChange = onInput,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(CpdSize.inputHeight),
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium.copy(color = CpdColor.textPrimary),
+                    // Long URLs wrap into a readable preview instead of scrolling the
+                    // beginning off-screen behind the trailing actions.
+                    .height(if (input.length > 36) 96.dp else CpdSize.inputHeight),
+                singleLine = false,
+                minLines = 1,
+                maxLines = 4,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    color = CpdColor.textPrimary,
+                    lineHeight = 20.sp
+                ),
                 placeholder = {
                     Text(
                         "Search or paste media link",
