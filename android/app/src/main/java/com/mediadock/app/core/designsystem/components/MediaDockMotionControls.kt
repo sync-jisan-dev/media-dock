@@ -23,7 +23,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -31,7 +30,9 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 import com.mediadock.app.core.designsystem.icons.HugeIcons
 import com.mediadock.app.core.designsystem.theme.*
 
@@ -93,54 +94,40 @@ fun MediaDockDownloadAction(label: String, busy: Boolean, onClick: () -> Unit, m
 }
 
 @Composable
-fun MediaDockTransferStatus(label: String, progress: Float, completed: Boolean, modifier: Modifier = Modifier) {
+fun MediaDockTransferStatus(label: String, progress: Float, completed: Boolean, modifier: Modifier = Modifier, indeterminate: Boolean = false) {
     val fill by animateFloatAsState(progress.coerceIn(0f, 1f), tween(350), label = "transferFill")
     val infiniteTransition = rememberInfiniteTransition(label = "transferPulse")
-    val shimmerAlpha by infiniteTransition.animateFloat(
-        initialValue = 0.82f,
-        targetValue = 1.0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1100),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shimmerAlpha"
+    val indeterminateFill by infiniteTransition.animateFloat(
+        initialValue = 0.16f,
+        targetValue = 0.72f,
+        animationSpec = infiniteRepeatable(tween(1050), repeatMode = RepeatMode.Reverse),
+        label = "transferIndeterminate"
     )
-
-    val progressGradient = if (completed) {
-        Brush.horizontalGradient(listOf(Color(0xFF10B981), Color(0xFF059669)))
-    } else {
-        Brush.horizontalGradient(
-            listOf(
-                BrandCoralOrange.copy(alpha = shimmerAlpha),
-                Color(0xFFFF6E40).copy(alpha = shimmerAlpha)
-            )
-        )
+    val effectiveFill = if (indeterminate) indeterminateFill else fill
+    val cellCount = 24
+    val filledCells = (effectiveFill * cellCount).roundToInt().coerceIn(0, cellCount)
+    val asciiBar = buildString(cellCount + 2) {
+        append('[')
+        repeat(cellCount) { index -> append(if (index < filledCells) '#' else '.') }
+        append(']')
     }
+    val accent = if (completed) Color(0xFF10B981) else BrandCoralOrange
 
-    Box(
+    Surface(
         modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .clip(RoundedCornerShape(CpdRadius.radiusFull))
-            .background(if (CpdColor.isDark) Color(0xFF1A1A1E) else Color(0xFFF1F3F5))
+            .height(56.dp)
             .border(
                 width = CpdBorderWidth.default,
-                color = if (completed) Color(0xFF10B981).copy(alpha = 0.4f) else BrandCoralOrange.copy(alpha = 0.35f),
-                shape = RoundedCornerShape(CpdRadius.radiusFull)
+                color = accent.copy(alpha = 0.45f),
+                shape = RoundedCornerShape(CpdRadius.radiusLg)
             )
             .semantics { stateDescription = "$label, ${(fill * 100).toInt()} percent" },
-        contentAlignment = Alignment.CenterStart
+        shape = RoundedCornerShape(CpdRadius.radiusLg),
+        color = if (CpdColor.isDark) Color(0xFF1A1A1E) else Color(0xFFF1F3F5)
     ) {
-        if (fill > 0f) {
-            Box(
-                Modifier
-                    .fillMaxWidth(fill)
-                    .fillMaxHeight()
-                    .background(progressGradient)
-            )
-        }
         Row(
-            Modifier.padding(horizontal = 14.dp),
+            Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -148,20 +135,31 @@ fun MediaDockTransferStatus(label: String, progress: Float, completed: Boolean, 
                 imageVector = if (completed) HugeIcons.CheckCircle else HugeIcons.Download,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = if (completed || fill > 0.15f) Color.White else MaterialTheme.colorScheme.onSurface
+                tint = accent
             )
-            AnimatedContent(label, label = "transferStatus") {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                AnimatedContent(label, label = "transferStatus") { status ->
+                    Text(
+                        text = status,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
                 Text(
-                    text = it,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (completed || fill > 0.35f) Color.White else MaterialTheme.colorScheme.onSurface
+                    text = asciiBar,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = accent,
+                    maxLines = 1,
+                    softWrap = false
                 )
             }
-            Spacer(Modifier.weight(1f))
             Text(
-                text = "${(fill * 100).toInt()}%",
+                text = if (indeterminate) "…" else "${(fill * 100).toInt()}%",
                 style = MaterialTheme.typography.labelLarge,
-                color = if (completed || fill > 0.85f) Color.White else MaterialTheme.colorScheme.onSurface
+                color = accent
             )
         }
     }
