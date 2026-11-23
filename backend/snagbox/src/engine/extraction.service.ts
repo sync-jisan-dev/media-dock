@@ -56,16 +56,19 @@ export class ExtractionService {
 
   private async resolveInfo(url: string): Promise<MediaInfo> {
     const platform = detectPlatform(url);
-    if (this.apify.supports(url)) {
-      try {
-        return await this.apify.getMediaInfo(url);
-      } catch {
-        this.logger.warn("Apify metadata failed; trying the next extractor");
-      }
-    }
     try {
+      // yt-dlp reports the actual adaptive formats, including YouTube's
+      // video-only 1080p/4K streams. The Apify actor is capped at 360p and
+      // must stay a fallback so it cannot hide higher available qualities.
       return await this.ytdlp.extractInfo(url);
     } catch (primaryError) {
+      if (this.apify.supports(url)) {
+        try {
+          return await this.apify.getMediaInfo(url);
+        } catch {
+          this.logger.warn("Apify metadata failed; trying the next extractor");
+        }
+      }
       const media = await this.tryProviders(url, platform, primaryError);
       if (!media) throw primaryError;
       return this.toMediaInfo(media, url, platform ?? "generic");

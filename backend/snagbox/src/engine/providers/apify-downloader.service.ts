@@ -54,7 +54,9 @@ export class ApifyDownloaderService {
   canDownload(input: RunDownloadInput): boolean {
     const r = input.request;
     return this.supports(input.url) && r.kind === "video" && (!r.format || r.format === "mp4")
-      && (!r.quality || ["360p", "highest", "lowest"].includes(r.quality))
+      // This Actor is deliberately configured to return a 360p rendition.
+      // Never let "highest" or "lowest" silently become a lower-quality file.
+      && r.quality === "360p"
       && r.clipStart == null && r.clipEnd == null && !r.embedSubtitles && !r.writeSubtitles
       && !r.embedMetadata && !r.embedChapters && !r.embedThumbnail && !r.writeThumbnail && !r.videoCodec;
   }

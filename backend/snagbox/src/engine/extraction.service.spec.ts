@@ -60,12 +60,25 @@ describe("ExtractionService provider fallback", () => {
     expect(f.transfer).toHaveBeenLastCalledWith(expect.anything(), "https://v16.tokcdn.com/sample.mp4", {});
   });
 
-  it("returns cloud metadata immediately when it succeeds", async () => {
+  it("prefers yt-dlp metadata so YouTube format choices are not capped at 360p", async () => {
     const f = fixture();
+    const details = { title: "yt-dlp result", qualities: { video: ["2160p", "1080p"] } };
+    f.ytdlp.extractInfo.mockResolvedValue(details as never);
     f.apify.supports.mockReturnValue(true);
     f.apify.getMediaInfo.mockResolvedValue({ title: "Cloud result" });
-    expect(await f.service.getMediaInfo(sourceUrl)).toEqual({ title: "Cloud result" });
-    expect(f.ytdlp.extractInfo).not.toHaveBeenCalled();
+    expect(await f.service.getMediaInfo(sourceUrl)).toEqual(details);
+    expect(f.ytdlp.extractInfo).toHaveBeenCalledTimes(1);
+    expect(f.apify.getMediaInfo).not.toHaveBeenCalled();
+    expect(f.first.extract).not.toHaveBeenCalled();
+  });
+
+  it("uses Apify metadata only when yt-dlp cannot inspect the YouTube URL", async () => {
+    const f = fixture();
+    f.apify.supports.mockReturnValue(true);
+    f.apify.getMediaInfo.mockResolvedValue({ title: "360p fallback" });
+    expect(await f.service.getMediaInfo(sourceUrl)).toEqual({ title: "360p fallback" });
+    expect(f.ytdlp.extractInfo).toHaveBeenCalledTimes(1);
+    expect(f.apify.getMediaInfo).toHaveBeenCalledTimes(1);
     expect(f.first.extract).not.toHaveBeenCalled();
   });
 

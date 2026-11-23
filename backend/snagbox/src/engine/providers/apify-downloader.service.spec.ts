@@ -79,6 +79,7 @@ describe("ApifyDownloaderService", () => {
   it("leaves advanced options and unsupported qualities to the next extractor", () => {
     const f = fixture();
     expect(f.service.canDownload(input)).toBe(true);
+    expect(f.service.canDownload({ ...input, request: { ...input.request, quality: "highest" } })).toBe(false);
     expect(f.service.canDownload({ ...input, request: { ...input.request, quality: "720p" } })).toBe(false);
     expect(f.service.canDownload({ ...input, request: { ...input.request, clipStart: 1 } })).toBe(false);
   });
