@@ -79,6 +79,10 @@ export class AppConfigService {
     return this.config.get("APIFY_ENABLED", { infer: true });
   }
 
+  get tikLiveApiKey(): string {
+    return this.config.get("TIKLIVEAPI_API_KEY", { infer: true });
+  }
+
   get apifyApiToken(): string {
     return this.config.get("APIFY_API_TOKEN", { infer: true }).trim();
   }

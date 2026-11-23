@@ -36,16 +36,30 @@ function fixture() {
     supports: jest.fn().mockReturnValue(false), canDownload: jest.fn().mockReturnValue(false),
     getMediaInfo: jest.fn(), runDownload: jest.fn(),
   };
+  const tikLiveApi = {
+    name: "tikliveapi", supports: jest.fn().mockReturnValue(false),
+    extract: jest.fn().mockResolvedValue(media("https://v16.tokcdn.com/sample.mp4")),
+  };
   const service = new ExtractionService(
     ytdlp as never, {} as never, { mediaCacheTtlMs: 0 } as never,
-    {} as never, first as never, second as never,
+    {} as never, first as never, second as never, tikLiveApi as never,
     apify as never,
   );
   const transfer = jest.spyOn(service as any, "downloadDirect").mockResolvedValue(undefined);
-  return { service, ytdlp, first, second, transfer, primaryError, apify };
+  return { service, ytdlp, first, second, transfer, primaryError, apify, tikLiveApi };
 }
 
 describe("ExtractionService provider fallback", () => {
+  it("uses TikLiveAPI when the earlier providers cannot transfer a TikTok video", async () => {
+    const f = fixture();
+    const url = "https://www.tiktok.com/@tiktok/video/7460937381265411370";
+    f.tikLiveApi.supports.mockReturnValue(true);
+    f.transfer.mockRejectedValueOnce(new Error("CDN unavailable")).mockRejectedValueOnce(new Error("CDN unavailable"));
+    await f.service.runDownload({ ...input, url, request: { ...input.request, url } });
+    expect(f.tikLiveApi.extract).toHaveBeenCalledWith(url);
+    expect(f.transfer).toHaveBeenLastCalledWith(expect.anything(), "https://v16.tokcdn.com/sample.mp4", {});
+  });
+
   it("returns cloud metadata immediately when it succeeds", async () => {
     const f = fixture();
     f.apify.supports.mockReturnValue(true);

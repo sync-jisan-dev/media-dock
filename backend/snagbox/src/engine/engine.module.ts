@@ -4,6 +4,7 @@ import { DirectDownloadService } from "./direct-download.service";
 import { ExtractionService } from "./extraction.service";
 import { MediaCache } from "./media-cache";
 import { TikTokEmbedProvider } from "./providers/tiktok-embed.provider";
+import { TikLiveApiProvider } from "./providers/tikliveapi.provider";
 import { CobaltProvider } from "./providers/cobalt.provider";
 import { YtdlpService } from "./ytdlp.service";
 import { ApifyDownloaderService } from "./providers/apify-downloader.service";
@@ -16,6 +17,7 @@ import { ApifyDownloaderService } from "./providers/apify-downloader.service";
     DirectDownloadService,
     ApifyDownloaderService,
     TikTokEmbedProvider,
+    TikLiveApiProvider,
     CobaltProvider,
     MediaCache,
     ExtractionService,

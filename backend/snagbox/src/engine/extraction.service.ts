@@ -6,6 +6,7 @@ import { AppConfigService } from "../config/app-config.service";
 import { DirectDownloadService } from "./direct-download.service";
 import { MediaCache } from "./media-cache";
 import { TikTokEmbedProvider } from "./providers/tiktok-embed.provider";
+import { TikLiveApiProvider } from "./providers/tikliveapi.provider";
 import { CobaltProvider } from "./providers/cobalt.provider";
 import { ApifyDownloaderService } from "./providers/apify-downloader.service";
 import type { MediaProvider, ProviderMedia } from "./providers/types";
@@ -26,9 +27,10 @@ export class ExtractionService {
     private readonly cache: MediaCache,
     cobalt: CobaltProvider,
     tiktokEmbed: TikTokEmbedProvider,
+    tikLiveApi: TikLiveApiProvider,
     private readonly apify: ApifyDownloaderService,
   ) {
-    this.providers = [cobalt, tiktokEmbed];
+    this.providers = [cobalt, tiktokEmbed, tikLiveApi];
   }
 
   async getMediaInfo(url: string): Promise<MediaInfo> {
