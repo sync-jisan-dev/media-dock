@@ -14,6 +14,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
@@ -219,6 +221,7 @@ import com.mediadock.app.domain.model.PlatformRegistry
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun HomeLanding(
     input: String,
     error: String?,
@@ -574,62 +577,12 @@ import com.mediadock.app.domain.model.PlatformRegistry
                 }
             }
 
-            // Copied Link Suggestion Card
-            AnimatedVisibility(
-                visible = suggestion != null,
-                enter = MediaDockMotion.CardEnter,
-                exit = fadeOut(tween(150)) + slideOutVertically { -20 }
-            ) {
-                if (suggestion != null) {
-                    Column {
-                        Spacer(Modifier.height(CpdSpace.space3x))
-                        Surface(
-                            shape = RoundedCornerShape(CpdRadius.radiusLg),
-                            color = CpdColor.bgSubtleSecondary,
-                            border = androidx.compose.foundation.BorderStroke(CpdBorderWidth.default, CpdColor.borderInteractiveSecondary)
-                        ) {
-                            Column(Modifier.fillMaxWidth().padding(CpdSpace.space4x)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(HugeIcons.ContentPaste, null, Modifier.size(CpdSize.iconMd), tint = CpdColor.CoralRest)
-                                    Text(
-                                        "Copied link detected",
-                                        Modifier.weight(1f).padding(start = CpdSpace.space2x),
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = CpdColor.textPrimary
-                                    )
-                                    IconButton(onClick = onDismissSuggestion, Modifier.size(CpdSize.iconButton)) {
-                                        Icon(HugeIcons.Close, "Dismiss", Modifier.size(CpdSize.iconSm), tint = CpdColor.textSecondary)
-                                    }
-                                }
-                                Text(
-                                    suggestion,
-                                    Modifier.padding(top = CpdSpace.space1x, bottom = CpdSpace.space2x),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = CpdColor.textSecondary
-                                )
-                                BrandButton(
-                                    onClick = { onSuggestion(suggestion) },
-                                    modifier = Modifier.fillMaxWidth().height(CpdSize.buttonLarge)
-                                ) {
-                                    Icon(HugeIcons.Download, null, Modifier.size(CpdSize.iconMd))
-                                    Spacer(Modifier.width(CpdSpace.space15x))
-                                    Text("Download now", fontWeight = FontWeight.Normal)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             // Quick Power Tools Drawer (Batch, Audio Extractor, M3U8, Subtitles)
             Spacer(Modifier.height(CpdSpace.space4x))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(CpdSpace.space2x),
+                verticalArrangement = Arrangement.spacedBy(CpdSpace.space2x)
             ) {
                 Surface(
                     shape = RoundedCornerShape(CpdRadius.radiusFull),
@@ -684,14 +637,17 @@ import com.mediadock.app.domain.model.PlatformRegistry
             // Recent Searches / Quick Links Chips
             if (recentSearches.isNotEmpty()) {
                 Spacer(Modifier.height(CpdSpace.space3x))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(CpdSpace.space15x),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(CpdSpace.space1x)
                 ) {
-                    Text("Recent:", style = MaterialTheme.typography.labelSmall, color = CpdColor.textDisabled)
+                    Text(
+                        "Recent:",
+                        modifier = Modifier.padding(vertical = CpdSpace.space1x),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = CpdColor.textDisabled
+                    )
                     recentSearches.forEach { query ->
                         Surface(
                             shape = CircleShape,
@@ -725,12 +681,12 @@ import com.mediadock.app.domain.model.PlatformRegistry
             }
 
             // Category Filter Chips (All, Video, Social, Audio, Community)
-            Row(
-                Modifier
+            FlowRow(
+                modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
                     .padding(bottom = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 listOf("All", "Video", "Social", "Music", "Community").forEach { cat ->
                     FilterChip(
